@@ -6,7 +6,7 @@ word_counter::word_counter(const unsigned int &freq, const std::string &word): f
 
 bool word_counter::operator < (const word_counter &other) const {
 	if (freq == other.freq) return word < other.word;
-	return freq < other.freq;
+	return freq > other.freq;
 }
 
 trie_node::trie_node() {
