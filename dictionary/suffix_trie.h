@@ -24,4 +24,5 @@ class trie {
 		std::string get_word(std::string s, const std::queue <unsigned int> revealed, unsigned int rank);
 };
 
+
 #endif
