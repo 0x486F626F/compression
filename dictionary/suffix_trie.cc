@@ -1,6 +1,13 @@
 #include "suffix_trie.h"
 
-#include <set>
+#include <stack>
+
+word_counter::word_counter(const unsigned int &freq, const std::string &word): freq(freq), word(word) {}
+
+bool word_counter::operator < (const word_counter &other) const {
+	if (freq == other.freq) return word < other.word;
+	return freq < other.freq;
+}
 
 trie_node::trie_node() {
 	count = 0;
@@ -56,21 +63,23 @@ bool trie::approx_match(std::string s, const unsigned int max_mismatch) {
 	return false;
 }
 
-int trie::get_rank(std::string s, std::queue <unsigned int> revealed) {
-	s = std::string(s.rbegin(), s.rend());
+std::set <word_counter> trie::_match_words(std::string s, std::queue <unsigned int> dontcare) {
 	std::queue <std::pair <trie_node*, std::string> > q;
+	std::set <word_counter> matched_words;
 	q.push(std::make_pair(root, ""));
-	std::set <std::pair <unsigned int, std::string> > matched_words;
+	std::stack <unsigned int> reverse_dontcare;
+	while (dontcare.size()) reverse_dontcare.push(s.size() - dontcare.front() - 1), dontcare.pop();
 	while (!q.empty()) {
 		trie_node* current = q.front().first;
 		std::string word = q.front().second, next_word;
 		q.pop();
-		if (word.size() == revealed.front()) {
-			revealed.pop();
+		while (word.size() > reverse_dontcare.top()) reverse_dontcare.pop();
+		if (word.size() == reverse_dontcare.top()) {
 			for (int i = 0; i < 27; i ++) 
 				if (current->child[i]) {
 					next_word = word + char(i == 26 ? ' ' : 'a' + i);
-					if (next_word.size() == s.size()) matched_words.insert(std::make_pair(current->count, next_word));
+					if (next_word.size() == s.size()) 
+						matched_words.insert(word_counter(current->count, std::string(next_word.rbegin(), next_word.rend())));
 					else q.push(std::make_pair(current->child[i], next_word));
 				}
 		}
@@ -78,48 +87,31 @@ int trie::get_rank(std::string s, std::queue <unsigned int> revealed) {
 			unsigned int idx = s[word.size()] == ' ' ? 26 : s[word.size()] - 'a';
 			if (current->child[idx]) {
 				next_word = word + s[word.size()];
-					if (next_word.size() == s.size()) matched_words.insert(std::make_pair(current->count, next_word));
+				if (next_word.size() == s.size()) matched_words.insert(word_counter(current->count, next_word));
 				else q.push(std::make_pair(current->child[idx], next_word));
 			}
 		}
 	}
+	return matched_words;
+}
+
+int trie::get_rank(std::string s, std::queue <unsigned int> dontcare) {
+	s = std::string(s.rbegin(), s.rend());
+	std::set <word_counter> matched_words = _match_words(s, dontcare);
 
 	int rank = 0;
 	while (matched_words.size()) {
-		if (matched_words.begin()->second == s) return rank;
+		if (matched_words.begin()->word == std::string(s.rbegin(), s.rend())) return rank;
 		else rank ++, matched_words.erase(matched_words.begin());
 	}
 	return -1;
 }
 
-std::string trie::get_word(std::string s, std::queue <unsigned int> revealed, unsigned int rank) {
+std::string trie::get_word(std::string s, std::queue <unsigned int> dontcare, unsigned int rank) {
 	s = std::string(s.rbegin(), s.rend());
-	std::queue <std::pair <trie_node*, std::string> > q;
-	q.push(std::make_pair(root, ""));
-	std::set <std::pair <unsigned int, std::string> > matched_words;
-	while (!q.empty()) {
-		trie_node* current = q.front().first;
-		std::string word = q.front().second, next_word;
-		q.pop();
-		if (word.size() == revealed.front()) {
-			revealed.pop();
-			for (int i = 0; i < 27; i ++) 
-				if (current->child[i]) {
-					next_word = word + char(i == 26 ? ' ' : 'a' + i);
-					if (next_word.size() == s.size()) matched_words.insert(std::make_pair(current->count, next_word));
-					else q.push(std::make_pair(current->child[i], next_word));
-				}
-		}
-		else {
-			unsigned int idx = s[word.size()] == ' ' ? 26 : s[word.size()] - 'a';
-			if (current->child[idx]) {
-				next_word = word + s[word.size()];
-					if (next_word.size() == s.size()) matched_words.insert(std::make_pair(current->count, next_word));
-				else q.push(std::make_pair(current->child[idx], next_word));
-			}
-		}
-	}
-	for (std::set <std::pair <unsigned int, std::string> >::iterator i = matched_words.begin(); i != matched_words.end(); i ++, rank --)
-		if (rank == 0) return std::string(i->second.rbegin(), i->second.rend());
+	std::set <word_counter> matched_words = _match_words(s, dontcare);
+
+	for (std::set <word_counter>::iterator i = matched_words.begin(); i != matched_words.end(); i ++, rank --)
+		if (rank == 0) return i->word;
 	return "NOT_FOUND";
 }
