@@ -73,8 +73,8 @@ std::set <word_counter> trie::_match_words(std::string s, std::queue <unsigned i
 		trie_node* current = q.front().first;
 		std::string word = q.front().second, next_word;
 		q.pop();
-		while (word.size() > reverse_dontcare.top()) reverse_dontcare.pop();
-		if (word.size() == reverse_dontcare.top()) {
+		while (reverse_dontcare.size() && word.size() > reverse_dontcare.top()) reverse_dontcare.pop();
+		if (reverse_dontcare.size() && word.size() == reverse_dontcare.top()) {
 			for (int i = 0; i < 27; i ++) 
 				if (current->child[i]) {
 					next_word = word + char(i == 26 ? ' ' : 'a' + i);
@@ -87,7 +87,8 @@ std::set <word_counter> trie::_match_words(std::string s, std::queue <unsigned i
 			unsigned int idx = s[word.size()] == ' ' ? 26 : s[word.size()] - 'a';
 			if (current->child[idx]) {
 				next_word = word + s[word.size()];
-				if (next_word.size() == s.size()) matched_words.insert(word_counter(current->count, next_word));
+				if (next_word.size() == s.size()) 
+						matched_words.insert(word_counter(current->count, std::string(next_word.rbegin(), next_word.rend())));
 				else q.push(std::make_pair(current->child[idx], next_word));
 			}
 		}
