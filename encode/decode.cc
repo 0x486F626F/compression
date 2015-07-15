@@ -7,7 +7,7 @@
 using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
-bool COMMENT = true;
+bool COMMENT = false;
 
 
 // ********************* TO BE PROVIDED (the following are temporary implementations) ***************
@@ -114,9 +114,9 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 	// adds last position difference to index, to get the length of the word
 	index += t1;
 
-	int globalIndex = convertToInt(in);
+	int globalIndex = convertToInt(in)-1;
 
-	if(COMMENT) cout << "len : " << index << " , globalIndex : " << globalIndex << " , guessed: " << guessed.str() << endl; 
+	if(COMMENT) cout << "len : " << index << " , rank : " << globalIndex << " , guessed: " << guessed.str() << endl; 
 
 	return GlobalSuffixTrie->get_word(guessed.str(), revealedQueue, globalIndex);
 }
@@ -160,6 +160,8 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie){
 	// the number of word groups in this phrase
 	int numGroups = convertToInt(in);
 
+	if(COMMENT) cout << "# word groups : " << numGroups << endl;
+
 	// the result
 	ostringstream res;
 
@@ -197,6 +199,7 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie){
 		} // if
 
 		numGroups--;
+		if(numGroups != 0) res << " ";
 	} // while
 	return res.str();
 }

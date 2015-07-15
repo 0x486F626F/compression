@@ -9,10 +9,10 @@
 using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
-bool REPORT = true;  // very detailed
-bool SUMMARY = true; // some details
-bool END = true;     // few details
-
+bool REPORT = false;  // very detailed
+bool SUMMARY = false; // some details
+bool END = false;     // few details
+bool STATS = true;    // statistics about optimum wordgroup/guess combinations
 
 // ********************* TO BE PROVIDED (the following are temporary implementations) ***************
 
@@ -21,7 +21,7 @@ bool END = true;     // few details
 // updates local dict
 // if not found, returns -1
 int searchLocalDict(string text){
-	return 16025;
+	return -1;
 }
 
 
@@ -29,6 +29,38 @@ int searchLocalDict(string text){
 // **********************************************************************************************
 
 
+// For Statistics:
+int MAX_SIZE = 1000;
+int numWordGroups[1000];
+int numWordsInGroup[1000];
+int numLetters[1000];
+
+void initializeStats(){
+	for(int j = 0; j < MAX_SIZE; j++){
+		numLetters[j] = 0;
+		numWordsInGroup[j] = 0;
+		numWordGroups[j] = 0;
+	}
+}
+
+void printStats(){
+	cout << endl << "*****************************************\nSTATS: " << endl;
+	cout << "num word groups: " << endl;
+        for(int j = 1; j < MAX_SIZE; j++){
+                if(numWordGroups[j] != 0) cout << j << " word groups: " << numWordGroups[j] << " times" << endl;
+        }
+        cout << endl << "num words in word groups: " << endl;
+        for(int j = 1; j < MAX_SIZE; j++){
+                if(numWordsInGroup[j] != 0) cout << j << " words in a word group: " << numWordsInGroup[j] << " times" << endl;
+        }
+        cout << endl << "num letters: " << endl;
+        for(int j = 1; j < MAX_SIZE; j++){
+                if(numLetters[j] != 0) cout << j << " letters: " << numLetters[j] << " times" << endl;
+        }
+	cout << "***************************************************" << endl << endl;
+}
+
+// **********************************************************************************************
 
 
 
@@ -141,7 +173,6 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 		// finds all combinations of choosing q items from len items, and stores it in
 		// combinationLetters
                 findAllCombinations(len, q, false);
-
 		// for each combination
                 for(vector< vector<int> >::iterator itera = combinationLetters.begin(); itera != combinationLetters.end(); itera++){
 			if(REPORT) cout << "     Letters: " << endl << "     ";
@@ -173,6 +204,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 			// if text is not found in global dictionary, done (return bestWord, with ratio -1)
 			if(globalRes == -1) {
 				if(REPORT) cout << text << " NOT FOUND in global dictionary => DONE " << endl;
+				combinationLetters.clear();
 				return bestWord;
 			}
 
@@ -206,9 +238,9 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 			// to the start of the string to indicate the global dicitionary is used
 
 			string t1 = convertToBinary(len - prev + 1);
-			string t2 = convertToBinary(globalRes);
+			string t2 = convertToBinary(globalRes+1);
 
-			if(REPORT) cout << "  end: " << t1 << " (" << len - prev + 1 << ") + index " << t2 << " (" << globalRes << ")" << endl;
+			if(REPORT) cout << "  end: " << t1 << " (" << len - prev + 1 << ") + index " << t2 << " (" << globalRes << " + 1)" << endl;
                         globalCompressed = "0" + globalCompressed + t1 + t2; 
 
 			// length of the compressed string
@@ -364,6 +396,9 @@ pair <string,string> removeSpaces(string text){
 
 // returns the binary string for the best compression of text
 string bestCompression (string text, trie * GlobalSuffixTrie){
+
+	initializeStats();
+
 	// final binary string, for text
 	string finalRes = "";
 
@@ -551,7 +586,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 					char words[len+1];
 
 					// prints current words
-					if(REPORT || SUMMARY) cout << "CURRENT WORD # " << k << " (of " << numSplits << ") : ";
+					if(REPORT || SUMMARY) cout << "CURRENT WORD # " << k << " (of " << numSplits << ") : \"";
 
 					// stores current set of words in words
 					for(int q = 0; q < len; q++){
@@ -561,7 +596,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 						if(REPORT || SUMMARY) cout << words[q];
 					}
 					words[len] = '\0';
-					if(REPORT || SUMMARY) cout << endl;
+					if(REPORT || SUMMARY) cout << "\"" << endl;
 
 	                                string thisWord(words);
 
@@ -629,6 +664,17 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 
 		if(SUMMARY || END) cout << "CONFIG : \""; 
 
+		// updates statistics
+		numWordGroups[1 + best->numberSplits]++;
+		for(vector<CompressedWords *>::iterator ITERAT = best->WordsSet.begin(); ITERAT != best->WordsSet.end(); ITERAT++){
+			numLetters[(*ITERAT)->revealedChars.size()]++;
+			string tmp = (*ITERAT)->words;
+			istringstream tempIn (tmp.c_str());
+			int l = 0;
+			while(tempIn >> tmp) l++;
+			numWordsInGroup[l]++;
+		}
+
 		/// ******************* APPEND COMPRESSED PHRASE TO RESULT *********
 		// adds # of word groups in this phrase
 		finalRes = finalRes + convertToBinary(best->numberSplits + 1); 
@@ -648,6 +694,9 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 		combinationLetters.clear();
 
 	} // while
+
+	// prints statistics
+	if(STATS) printStats();
 
 	// adds dot indicator, and "10" (indicates end of phrases) + bitVector
 	return dot + finalRes + "10" + bitVector;
