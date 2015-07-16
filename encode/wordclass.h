@@ -7,10 +7,12 @@ class CompressedWords{
 
   public:
         std::string words;
-        std::vector <int> revealedChars;
+        std::vector<int> revealedChars;
+        int numLetters;
         std::string compressedString;
         float ratio;
         bool usesLocalDict;
+        std::string encodingScheme;
         CompressedWords();
 };
 
