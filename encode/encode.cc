@@ -17,7 +17,6 @@ bool STATS = true;    // statistics about optimum wordgroup/guess combinations
 
 
 
-
 // For Statistics:
 int MAX_SIZE = 1000;
 int numWordGroups[1000];
