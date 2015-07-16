@@ -6,6 +6,7 @@ CompressedWords::CompressedWords() {
         words = "";
         usesLocalDict = false;
         ratio = -1.0;
+        numLetters = 0;
 }
 
 
@@ -40,5 +41,5 @@ string convertToBinary(int n) {
         r = "1" + r;
         for(int i = 1; i < len; i++) { r = "0" + r;}
 
-        return r;
+        return r; 
 }
