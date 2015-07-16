@@ -6,6 +6,7 @@ CompressedWords::CompressedWords() {
         words = "";
         usesLocalDict = false;
         ratio = -1.0;
+        numLetters = 0;
 }
 
 
