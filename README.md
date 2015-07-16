@@ -19,11 +19,11 @@ each word group is encoded as follows:
 * list of \<position difference, char\> representing revealed characters (position difference is the difference between the index of the current revealed char and the previous one)
 
 * the position difference to the end of the word 
-* the rank in the suffix trie search
+* the rank in the suffix trie search + 1
 
 ## Local Dictionary Encoding
 
-* the rank in the local dictionary search
+* the rank in the local dictionary search + 1
 
 ## Standard Encoding
 
@@ -34,9 +34,10 @@ each word group is encoded as follows:
 
 A set of the number of spaces: reading the decoded string so far left-to-right, char-by-char 
 
+* the number of spaces at the beginning of the text + 1 is stored
 * for each space encountered, the number of spaces at that point + 1 is stored in the binary string
-* for each period encountered, the number of spaces immediately before it + 1 is stored 
-* the number of spaces at the end of the text is stored
+* for each period encountered, the number of spaces immediately before it + 1 and after it + 1 are stored 
+* the number of spaces at the end of the text + 1 is stored
 
 (note: for all of these, once the number of spaces is stored, all multiple spaces are deleted)
 
