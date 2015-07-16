@@ -4,43 +4,38 @@
 #include <iomanip>
 #include <sstream>
 #include "encode.h"
+#include "mtf.h"
 #include "wordclass.h"
 
 using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
-bool REPORT = false;  // very detailed
-bool SUMMARY = false; // some details
-bool END = false;     // few details
+bool REPORT = true;  // very detailed
+bool SUMMARY = true; // some details
+bool END = true;     // few details
 bool STATS = true;    // statistics about optimum wordgroup/guess combinations
 
-// ********************* TO BE PROVIDED (the following are temporary implementations) ***************
 
-
-// searches local dict for text, returns index and then
-// updates local dict
-// if not found, returns -1
-int searchLocalDict(string text){
-	return -1;
-}
-
-
-
-// **********************************************************************************************
 
 
 // For Statistics:
 int MAX_SIZE = 1000;
 int numWordGroups[1000];
 int numWordsInGroup[1000];
-int numLetters[1000];
+int numberLetters[1000];
+
+// normal = 0, local = 1, global = 2
+int schemes[3];
 
 void initializeStats(){
 	for(int j = 0; j < MAX_SIZE; j++){
-		numLetters[j] = 0;
+		numberLetters[j] = 0;
 		numWordsInGroup[j] = 0;
 		numWordGroups[j] = 0;
 	}
+	schemes[0] = 0;
+	schemes[1] = 0;
+	schemes[2] = 0;
 }
 
 void printStats(){
@@ -55,8 +50,13 @@ void printStats(){
         }
         cout << endl << "num letters: " << endl;
         for(int j = 1; j < MAX_SIZE; j++){
-                if(numLetters[j] != 0) cout << j << " letters: " << numLetters[j] << " times" << endl;
+                if(numberLetters[j] != 0) cout << j << " letters: " << numberLetters[j] << " times" << endl;
         }
+	cout << endl << "schemes used:" << endl;
+	cout << "NORMAL: " << schemes[0] << " times" << endl;
+        cout << "LOCAL : " << schemes[1] << " times" << endl;
+        cout << "GLOBAL: " << schemes[2] << " times" << endl;
+
 	cout << "***************************************************" << endl << endl;
 }
 
@@ -122,22 +122,23 @@ string normalCompression(string text){
 // searches for text in the local dictionary and returns
 // the corresponding CompressedWords *
 // normalLen is the length of the compressed string under the standard scheme
-CompressedWords * tryLocalDict(string text, int normalLen){
+CompressedWords * tryLocalDict(string text, int normalLen, mtf * localDictionary){
 	// compressed version of this phrase using local dict
         CompressedWords * bestWord = new CompressedWords;
 
         bestWord->words = text;
 
         // determines index using local Dictionary
-        int localRes = searchLocalDict(text);
+        unsigned int localRes = localDictionary->index(text);
 
         string localCompressed = "";
         float localRatio = -1.0;
 
+
 	// if text is found in local dictionary, determine localCompressed
-        if(localRes != -1){
+        if(localRes != 0xffffffff){
 		// "1" indicates local dict is used
-        	localCompressed = "1" + convertToBinary(localRes);
+        	localCompressed = "1" + convertToBinary(localRes + 1);
                 int localLen = localCompressed.length();
                 localRatio = 100.0 * localLen / normalLen; 
                 if(REPORT) cout << "LOCAL (FOR \"" << text << "\"): localRes = " << localRes << " , localCompressed = " << localCompressed
@@ -147,7 +148,7 @@ CompressedWords * tryLocalDict(string text, int normalLen){
         } else if (REPORT || SUMMARY) cout << "NOT FOUND IN LOCAL DICTIONARY" << endl;
         bestWord->compressedString = localCompressed;
         bestWord->ratio = localRatio;
-        bestWord->usesLocalDict = (localRes != -1);
+        bestWord->usesLocalDict = (localRes != 0xffffffff);
 	return bestWord;
 }
 
@@ -260,6 +261,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
                                 bestWord->ratio = globalRatio;
                                 bestWord->usesLocalDict = false;
                                 bestWord->revealedChars = currentRevealed;
+				bestWord->numLetters = currentRevealed.size();
                         } // if
                 } // for
 
@@ -351,20 +353,37 @@ pair <string,string> removeSpaces(string text){
 	// last char was space
 	bool space = false;
 	int numSpaces = 0;
+
+	// if the last non-space char was a period or start of text
+	bool period = true;
+
         // reads text char-by-char
         while(in.get(c)){
                 if(c != ' ' && ! space) {
+
+			if(period) {
+	                        // stores # of spaces
+        	                bits += convertToBinary(numSpaces + 1);
+                	        numSpaces = 0;
+			}
+
 			// if c is not a space and prev char was not a space, outputs c
 			out << c;
 			// if c is a period, stores the number of spaces before it, 0
-			if(c == '.') bits += convertToBinary(1);
+			if(c == '.') {
+				bits += convertToBinary(1);
+				period = true;
+			} else period = false;
 		} else if(c != ' ' && space) {
 			// if c is not a space, but last char was a space
 			space = false;
 
 			// if c is a period, no space is outputted; otherwise outputs 1 space
-			if (c == '.') out << c;
+			if (c == '.' || period) out << c;
 			else out << ' ' << c;
+
+			if(c!='.') period = false;
+			else period = true;
 
 			// stores # of spaces
 			bits += convertToBinary(numSpaces + 1);
@@ -383,6 +402,9 @@ pair <string,string> removeSpaces(string text){
 
         string simplified = out.str();
 
+	// if text is only spaces, stores "spaces at end" (i.e. 0)
+	if(simplified == "") bits+= convertToBinary(1);
+
         if(REPORT) cout << "SIMPLIFIED SPACES: \"" << text << "\" to \"" << simplified << "\" with bits " << bits << endl;
 
         pair <string, string> p;
@@ -398,6 +420,8 @@ pair <string,string> removeSpaces(string text){
 string bestCompression (string text, trie * GlobalSuffixTrie){
 
 	initializeStats();
+
+	mtf * localDictionary = new mtf;
 
 	// final binary string, for text
 	string finalRes = "";
@@ -504,7 +528,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
                 int normalLen = normalComp.length();
 
 		// the compressed word using local dictionary
-		CompressedWords * bestWord = tryLocalDict(thisWord,normalLen);
+		CompressedWords * bestWord = tryLocalDict(thisWord,normalLen, localDictionary);
 
 		// the best revealed-chars combination, gotten from the global dictionary
 		CompressedWords * bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie);
@@ -514,9 +538,11 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 			if(REPORT) cout << "Global ratio " << bestGlobal->ratio << " < local ratio " << bestWord->ratio << endl;
 			delete bestWord;
 			bestWord = bestGlobal;
+			bestWord->encodingScheme = "GLOBAL";
 		} else if (bestWord->ratio != -1 && bestWord->ratio < 100 && (bestGlobal->ratio >= bestWord->ratio || bestGlobal->ratio == -1)){
 			if(REPORT) cout << "Global ratio " << bestGlobal->ratio << " >= local ratio " << bestWord->ratio << endl;
 			delete bestGlobal;
+                        bestWord->encodingScheme = "LOCAL";
 		} else {
 			// if not found in either dictionary
 			delete bestGlobal;
@@ -527,6 +553,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 			}
 			bestWord->ratio = 100.0;
 			bestWord->compressedString = normalComp;
+                        bestWord->encodingScheme = "NORMAL";
 		}
 
                 best->WordsSet.push_back(bestWord);
@@ -536,6 +563,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 							<< thisWord << "\" : " << bestWord->compressedString << " (normal) 100" << endl << "***" << endl;
 		else if(SUMMARY) cout << "***" << endl << "COMPRESSED WORD FOR \"" << thisWord << "\" : " << bestWord->compressedString << " (" 
 				<< (bestWord->usesLocalDict ? "local" : "global") << ") " << bestWord->ratio << endl << "***" << endl;
+
 
 		// ************** CASE 2: 1 <= numSplits <= m-1
 		// tries to split the phrase p in all possible ways
@@ -605,7 +633,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 			                int normalLen = normalComp.length();
 
 			                // the compressed word using local dictionary
-			                CompressedWords * bestWord = tryLocalDict(thisWord,normalLen);
+			                CompressedWords * bestWord = tryLocalDict(thisWord,normalLen, localDictionary);
 
 			                // the best revealed-chars combination, gotten from the global dictionary
 			                CompressedWords * bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie);
@@ -615,9 +643,11 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 			                        if(REPORT) cout << "Global ratio " << bestGlobal->ratio << " < local ratio " << bestWord->ratio << endl;
 			                        delete bestWord;
                         			bestWord = bestGlobal;
+						bestWord->encodingScheme = "GLOBAL";
 			                } else if (bestWord->ratio != -1 && bestWord->ratio < 100 && (bestGlobal->ratio >= bestWord->ratio || bestGlobal->ratio == -1)){
                         			if(REPORT) cout << "Global ratio " << bestGlobal->ratio << " >= local ratio " << bestWord->ratio << endl;
 			                        delete bestGlobal;
+                                                bestWord->encodingScheme = "LOCAL";
 			                } else {
                         			// if not found in either dictionary
 			                        delete bestGlobal;
@@ -628,6 +658,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
                         			}
                         			bestWord->ratio = 100.0;
                         			bestWord->compressedString = normalComp;
+                                                bestWord->encodingScheme = "NORMAL";
                 			}
 					// adds bestWord to current
 	                                current->WordsSet.push_back(bestWord);
@@ -659,25 +690,49 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 			combinationList.clear();
 		} // for
 
-		if(SUMMARY || REPORT) cout << "THE BEST FOR THIS PHRASE: avgRatio = " << best->totalRatio / (1 + best->numberSplits) << " (total " 
-					<< best->totalRatio << " / (1 + numSplits " << best->numberSplits << ")) " << endl;
 
-		if(SUMMARY || END) cout << "CONFIG : \""; 
-
-		// updates statistics
+		// updates statistics + local dictionary
 		numWordGroups[1 + best->numberSplits]++;
 		for(vector<CompressedWords *>::iterator ITERAT = best->WordsSet.begin(); ITERAT != best->WordsSet.end(); ITERAT++){
-			numLetters[(*ITERAT)->revealedChars.size()]++;
+			// updates # letters
+			numberLetters[(*ITERAT)->numLetters]++;
+
+			// words encoded
 			string tmp = (*ITERAT)->words;
+
+			// updates encoding schemes
+			string scheme = (*ITERAT)->encodingScheme;
+			if(scheme == "NORMAL") schemes[0]++;
+			else if(scheme == "LOCAL") schemes[1]++;
+			else schemes[2]++;
+
+			// updates local dictionary
+			localDictionary->insert(tmp);
+			if(REPORT || SUMMARY) cout << "local: inserting \"" << tmp << "\" (" << scheme << " used)" << endl;
+
+			// updates words in word group
 			istringstream tempIn (tmp.c_str());
 			int l = 0;
-			while(tempIn >> tmp) l++;
+			string tm;
+			while(tempIn >> tm) {
+				l++;
+				if(tmp != tm){
+					if(REPORT || SUMMARY) cout << "local: inserting \"" << tm << "\"" << endl;
+					localDictionary->insert(tm);
+				}
+			}
 			numWordsInGroup[l]++;
 		}
 
 		/// ******************* APPEND COMPRESSED PHRASE TO RESULT *********
 		// adds # of word groups in this phrase
 		finalRes = finalRes + convertToBinary(best->numberSplits + 1); 
+
+
+                if(SUMMARY || REPORT) cout << "THE BEST FOR THIS PHRASE: avgRatio = " << best->totalRatio / (1 + best->numberSplits) << " (total "
+                                        << best->totalRatio << " / (1 + numSplits " << best->numberSplits << ")) " << endl;
+
+                if(SUMMARY || END) cout << "CONFIG : \"";
 
 
 		// adds each compressed string for the groups of words 
@@ -697,6 +752,8 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 
 	// prints statistics
 	if(STATS) printStats();
+
+	delete localDictionary;
 
 	// adds dot indicator, and "10" (indicates end of phrases) + bitVector
 	return dot + finalRes + "10" + bitVector;

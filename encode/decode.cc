@@ -1,5 +1,6 @@
 #include "decode.h"
 #include "wordclass.h"
+#include "mtf.h"
 #include <vector>
 #include <queue>
 #include <sstream>
@@ -7,21 +8,7 @@
 using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
-bool COMMENT = false;
-
-
-// ********************* TO BE PROVIDED (the following are temporary implementations) ***************
-
-// returns the word stored at index in the local dictionary
-string searchDecodeLocal(int index){
-        return " DECODED LOCAL,";
-}
-
-
-// **************************************************************************************
-
-
-
+bool COMMENT = true;
 
 
 // converts first number from in to an int
@@ -30,7 +17,7 @@ int convertToInt(istringstream & in){
 	int i = 1;
 	char c;
 	while(in >> c && c == '0') i++;
-
+cout << "i : " << i << " ; ";
 	// the number in binary
 	stringstream num;
 	while(i > 0){
@@ -42,7 +29,7 @@ int convertToInt(istringstream & in){
 	// the desired number in binary
 	int binary;
 	num >> binary;
-
+cout << "num: " << binary << endl;
 	// converts binary to int
 
 	int factor = 1;
@@ -124,9 +111,10 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 
 // decodes the first word from in, given that it
 // was encoded using the local dictionary
-string decodeLocal (istringstream & in) {
-        int index = convertToInt(in);
-	return searchDecodeLocal(index);
+string decodeLocal (istringstream & in, mtf * localDictionary) {
+        int index = convertToInt(in) - 1;
+	if(COMMENT) cout << "searching local at index " << index << endl;
+	return localDictionary->word(index);
 }
 
 
@@ -156,7 +144,8 @@ string decodeNormal(istringstream & in) {
 
 
 // decodes the first phrase in the binary string in
-string decodePhrase(istringstream & in, trie * GlobalSuffixTrie){
+string decodePhrase(istringstream & in, trie * GlobalSuffixTrie, mtf * localDictionary){
+
 	// the number of word groups in this phrase
 	int numGroups = convertToInt(in);
 
@@ -165,21 +154,26 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie){
 	// the result
 	ostringstream res;
 
+	// word groups (to be inserted in the local dict)
+	queue<string> words;
+
 	// decodes word group by word group
 	while(numGroups > 0){
 		// reads in the first bit
 		char c;
 		in >> c;
 
+		string result;
+
 		// if the first bit is 0, this word group is encoded
 		// with the global dictionary scheme
-		if(c == '0') res << decodeGlobal(in, GlobalSuffixTrie);
+		if(c == '0') result = decodeGlobal(in, GlobalSuffixTrie);
 		else {  // if the first bit is 1
 			c = in.peek();
 
 			// if the first 2 bits are 10 then this word group is encoded
                 	// with the local dictionary scheme
-			if(c == '0') res << decodeLocal(in);
+			if(c == '0') result = decodeLocal(in, localDictionary);
 			else {  // if the first 2 bits are 11
 				in >> c;
 				c = in.peek();
@@ -188,19 +182,45 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie){
                         	// with the standard scheme
 				if(c == '0'){
 					in >> c;
-					res << decodeNormal(in);
+					result = decodeNormal(in);
 				} else {
 					// if the first 3 bits are 111 then this word group is encoded
                                 	// with the local dictionary scheme
 					in.putback('1');
-					res << decodeLocal(in);
+					result = decodeLocal(in, localDictionary);
 				} // if
 			} // if
 		} // if
 
+		// adds result to word groups
+		words.push(result);
+
+		res << result;
+
+
 		numGroups--;
 		if(numGroups != 0) res << " ";
 	} // while
+
+	// inserts word groups in the local dictionary
+	while(!words.empty()){
+		// current word group
+		string group = words.front();
+		words.pop();
+
+                if(COMMENT) cout << "local inserting \"" << group << "\"" << endl;
+                localDictionary->insert(group);
+
+                istringstream tmpIn(group.c_str());
+                string tm;
+                while(tmpIn >> tm){
+                        if(tm != group){
+                                if(COMMENT) cout << "local inserting \"" << tm << "\"" << endl;
+                                localDictionary->insert(tm);
+                        } // if
+                } // while
+	} // while
+
 	return res.str();
 }
 
@@ -214,31 +234,54 @@ string addSpaces(string simplified, istringstream & in){
 
         ostringstream res;
 
+	// reads the # spaces at start from in
+        n = convertToInt(in) - 1;
+        // adds this number of spaces
+        while(n > 0){
+                res << ' ';
+        	n--;
+        } // while
+
+	// was the last char a period
+	bool period = false;
+
 	// reads char-by-char
         while(read.get(c)){
 		// outputs all non-space and non-period chars
-        	if(c != ' ' && c != '.') res << c;
-		else {  // reads the next number from in
+        	if(c != ' ' && c != '.') {
+			res << c;
+			period = false;
+		} else {  // reads the next number (# spaces before a perido if c == '.') from in
 			n = convertToInt(in) - 1;
-
 			// adds this number of spaces
 			while(n > 0){
 				res << ' ';
 				n--;
 			} // while
-			// if c is a period, outputs it; otherwise c is a space (so 
+			// if c is a period, outputs it and the # spaces after it; otherwise c is a space (so 
 			// has already been outputted)
-			if(c == '.') res << c;
+			if(c == '.') {
+				period = true;
+				res << c;
+				// reads the next number from in
+	                        n = convertToInt(in) - 1;
+        	                // adds this number of spaces
+                	        while(n > 0){
+                        	        res << ' ';
+                                	n--;
+				} // while
+			} else period = false;
 		} // else
         } // while
 
-	// adds spaces at end
-	n = convertToInt(in) - 1;
-        while(n > 0){
-	        res << ' ';
-                n--;
-        } // while
-
+	if(!period){
+		// adds spaces at end
+		n = convertToInt(in) - 1;
+	        while(n > 0){
+		        res << ' ';
+                	n--;
+	        } // while
+	}
 
         return res.str();
 }
@@ -278,6 +321,9 @@ string unsimplify(string simplified, istringstream & in){
 
 // decodes the entire binary string from in
 string decodeText(istringstream & in, trie * GlobalSuffixTrie){
+	// local dictionary
+	mtf * localDictionary = new mtf;
+
 	// the result
 	ostringstream res;
 
@@ -302,7 +348,7 @@ string decodeText(istringstream & in, trie * GlobalSuffixTrie){
 				start = false;
 			} else res << '.';
 			in.putback(c);
-			res << decodePhrase(in, GlobalSuffixTrie);
+			res << decodePhrase(in, GlobalSuffixTrie, localDictionary);
 		} // if
 	} // while
 
@@ -321,5 +367,7 @@ string decodeText(istringstream & in, trie * GlobalSuffixTrie){
 	// recovers upper-case letters and commas
 	result = unsimplify(result,in);
 	
+	delete localDictionary;
+
 	return result;
 }
