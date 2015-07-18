@@ -14,7 +14,7 @@ each word group is encoded as follows:
 * the corresponding encoding for this word group (see below):
 
 ## Global Dictionary Encoding
-
+*if uses previous letter, this starts with “10” and this letter in its encoded form
 * number of revealed characters
 * list of \<position difference, char\> representing revealed characters (position difference is the difference between the index of the current revealed char and the previous one)
 
@@ -50,6 +50,7 @@ A bit vector for commas, periods and upper-case letters:
 (note: for all of these, once the indicator bit(s) is stored, commas + periods are made into spaces and upper-case letters into lower case letters, in the encoding phase)
 
 For all individual chars encoded, they are encoded as follows:
+Normal:
 ```
 ‘a’ – 1
 ‘b’ – 2
@@ -57,3 +58,5 @@ For all individual chars encoded, they are encoded as follows:
 ‘z’ – 26
 ‘ ‘ - 27
 ```
+OR
+Based on frequencies (see wordclass.cc)
