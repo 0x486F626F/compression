@@ -38,5 +38,6 @@ int main (){
 		} else quit = true;
 	} // while
 	delete GlobalSuffixTrie;
+
 }
 

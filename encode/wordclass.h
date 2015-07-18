@@ -8,11 +8,11 @@ class CompressedWords{
   public:
         std::string words;
         std::vector<int> revealedChars;
-        int numLetters;
+	int numLetters;
         std::string compressedString;
         float ratio;
         bool usesLocalDict;
-        std::string encodingScheme;
+	std::string encodingScheme;
         CompressedWords();
 };
 

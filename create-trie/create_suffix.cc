@@ -6,7 +6,7 @@
 
 using namespace std;
 
-bool COMMENTS = true;
+bool COMMENTS = false;
 
 
 // given a corpus in a 
