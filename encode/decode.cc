@@ -8,7 +8,7 @@
 using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
-bool COMMENT = true;
+bool COMMENT = false;
 
 
 // converts first number from in to an int
@@ -17,7 +17,6 @@ int convertToInt(istringstream & in){
 	int i = 1;
 	char c;
 	while(in >> c && c == '0') i++;
-cout << "i : " << i << " ; ";
 	// the number in binary
 	stringstream num;
 	while(i > 0){
@@ -29,7 +28,6 @@ cout << "i : " << i << " ; ";
 	// the desired number in binary
 	int binary;
 	num >> binary;
-cout << "num: " << binary << endl;
 	// converts binary to int
 
 	int factor = 1;
@@ -45,10 +43,42 @@ cout << "num: " << binary << endl;
         return total;
 }
 
-
 // decodes the first word from in, given that it
 // was encoded using the global dictionary
 string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
+	// did this encoding use the last letter of the prev word?
+	bool usedLast = false;
+
+	// encoding to be added before guesses (if !usedLast) this is ""
+	// otherwise it is lastLetter + " "
+        string start = "";
+
+	// determines if usedLast is true or false based on first 2 bits
+	// (if they are "10" then true, else false)
+	char c = in.peek();
+	if(c == '1'){
+		in >> c;
+		c = in.peek();
+		if(c == '0'){
+			in >> c;
+			usedLast = true;
+
+			// decodes the last letter
+			int t = convertToInt(in);
+	                if(ENCODINGCHARS == 1) c = intToChar(t);
+        	        else {
+                	        if(t == 27) c = ' ';
+                        	else c = t + 'a' - 1;
+                	} // eles
+			ostringstream o;
+			o << c << " ";
+			start = o.str();
+			if(COMMENT) cout << "first letter " << c << endl;
+		} else {
+			in.putback(c);
+		} // else
+	} // if
+
 	// the number of revealed chars
 	int numReveals = convertToInt(in);
 
@@ -80,8 +110,11 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 
 		// determines the revealed char
 		char c;
-		if(t2 == 27) c = ' '; 
-		else c = t2 + 'a' - 1;
+		if(ENCODINGCHARS == 1) c = intToChar(t2);
+		else {
+			if(t2 == 27) c = ' '; 
+			else c = t2 + 'a' - 1;
+		}
 
 		guessed << c;
 
@@ -103,9 +136,10 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 
 	int globalIndex = convertToInt(in)-1;
 
-	if(COMMENT) cout << "len : " << index << " , rank : " << globalIndex << " , guessed: " << guessed.str() << endl; 
+	string guessedWord = start + guessed.str();
 
-	return GlobalSuffixTrie->get_word(guessed.str(), revealedQueue, globalIndex);
+	if(COMMENT) cout << "len : " << index << " , rank : " << globalIndex << " , guessed: " << guessedWord << endl; 
+	return GlobalSuffixTrie->get_word(guessedWord, revealedQueue, globalIndex,usedLast);
 }
 
 
@@ -133,8 +167,11 @@ string decodeNormal(istringstream & in) {
 	while(len > 0){
 		int t = convertToInt(in);
 		char c;
-		if(t == 27) c = ' ';
-		else c = t + 'a' - 1; 
+		if(ENCODINGCHARS == 1)  c = intToChar(t);
+		else {
+			if(t == 27) c = ' ';
+			else c = t + 'a' - 1; 
+		}
 		res << c;
 		len--;
 	}
@@ -209,14 +246,14 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie, mtf * localDict
 		words.pop();
 
                 if(COMMENT) cout << "local inserting \"" << group << "\"" << endl;
-                localDictionary->insert(group);
+                localDictionary->insert(group,NULL);
 
                 istringstream tmpIn(group.c_str());
                 string tm;
                 while(tmpIn >> tm){
                         if(tm != group){
                                 if(COMMENT) cout << "local inserting \"" << tm << "\"" << endl;
-                                localDictionary->insert(tm);
+                                localDictionary->insert(tm,NULL);
                         } // if
                 } // while
 	} // while
@@ -242,7 +279,7 @@ string addSpaces(string simplified, istringstream & in){
         	n--;
         } // while
 
-	// was the last char a period
+	// was the last char a period?
 	bool period = false;
 
 	// reads char-by-char
@@ -364,8 +401,12 @@ string decodeText(istringstream & in, trie * GlobalSuffixTrie){
 	string result = addSpaces(simplified,in);
 	if(COMMENT) cout << "ADDED SPACES : \"" << result << "\"" << endl;
 
+	// decodes the rest (a bit vector) with RLE
+	string rleRest = rleDecode(in);
+	istringstream in2(rleRest.c_str());
+
 	// recovers upper-case letters and commas
-	result = unsimplify(result,in);
+	result = unsimplify(result,in2);
 	
 	delete localDictionary;
 

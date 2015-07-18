@@ -1,7 +1,7 @@
 #include "suffix_trie.h"
 
 #include <stack>
-
+#include <iostream>
 word_counter::word_counter(const unsigned int &freq, const std::string &word): freq(freq), word(word) {}
 
 bool word_counter::operator < (const word_counter &other) const {
@@ -63,12 +63,15 @@ bool trie::approx_match(std::string s, const unsigned int max_mismatch) {
 	return false;
 }
 
-std::set <word_counter> trie::_match_words(std::string s, std::queue <unsigned int> dontcare) {
+std::set <word_counter> trie::_match_words(std::string s, std::queue <unsigned int> dontcare, bool usedLast) {
 	std::queue <std::pair <trie_node*, std::string> > q;
 	std::set <word_counter> matched_words;
 	q.push(std::make_pair(root, ""));
 	std::stack <unsigned int> reverse_dontcare;
-	while (dontcare.size()) reverse_dontcare.push(s.size() - dontcare.front() - 1), dontcare.pop();
+
+	if(!usedLast) while (dontcare.size()) reverse_dontcare.push(s.size() - dontcare.front() - 1), dontcare.pop();
+	else while (dontcare.size()) reverse_dontcare.push(s.size() - dontcare.front() - 3), dontcare.pop();
+
 	while (!q.empty()) {
 		trie_node* current = q.front().first;
 		std::string word = q.front().second, next_word;
@@ -96,10 +99,9 @@ std::set <word_counter> trie::_match_words(std::string s, std::queue <unsigned i
 	return matched_words;
 }
 
-int trie::get_rank(std::string s, std::queue <unsigned int> dontcare) {
+int trie::get_rank(std::string s, std::queue <unsigned int> dontcare, bool usedLast) {
 	s = std::string(s.rbegin(), s.rend());
-	std::set <word_counter> matched_words = _match_words(s, dontcare);
-
+	std::set <word_counter> matched_words = _match_words(s, dontcare,usedLast);
 	int rank = 0;
 	while (matched_words.size()) {
 		if (matched_words.begin()->word == std::string(s.rbegin(), s.rend())) return rank;
@@ -108,9 +110,9 @@ int trie::get_rank(std::string s, std::queue <unsigned int> dontcare) {
 	return -1;
 }
 
-std::string trie::get_word(std::string s, std::queue <unsigned int> dontcare, unsigned int rank) {
+std::string trie::get_word(std::string s, std::queue <unsigned int> dontcare, unsigned int rank, bool usedLast) {
 	s = std::string(s.rbegin(), s.rend());
-	std::set <word_counter> matched_words = _match_words(s, dontcare);
+	std::set <word_counter> matched_words = _match_words(s, dontcare, usedLast);
 
 	for (std::set <word_counter>::iterator i = matched_words.begin(); i != matched_words.end(); i ++, rank --)
 		if (rank == 0) return i->word;

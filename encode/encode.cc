@@ -10,7 +10,7 @@
 using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
-bool REPORT = true;  // very detailed
+bool REPORT = false;  // very detailed
 bool SUMMARY = true; // some details
 bool END = true;     // few details
 bool STATS = true;    // statistics about optimum wordgroup/guess combinations
@@ -23,10 +23,12 @@ int MAX_SIZE = 1000;
 int numWordGroups[1000];
 int numWordsInGroup[1000];
 int numberLetters[1000];
+int numLastLetterUsed;
 
 // normal = 0, local = 1, global = 2
 int schemes[3];
 
+// initializes statistics (everything has count 0)
 void initializeStats(){
 	for(int j = 0; j < MAX_SIZE; j++){
 		numberLetters[j] = 0;
@@ -36,8 +38,10 @@ void initializeStats(){
 	schemes[0] = 0;
 	schemes[1] = 0;
 	schemes[2] = 0;
+	numLastLetterUsed = 0;
 }
 
+// prints all statistics
 void printStats(){
 	cout << endl << "*****************************************\nSTATS: " << endl;
 	cout << "num word groups: " << endl;
@@ -56,6 +60,7 @@ void printStats(){
 	cout << "NORMAL: " << schemes[0] << " times" << endl;
         cout << "LOCAL : " << schemes[1] << " times" << endl;
         cout << "GLOBAL: " << schemes[2] << " times" << endl;
+	if(USELASTLETTER == 1) cout << "last letter used : " << numLastLetterUsed << " times" << endl;
 
 	cout << "***************************************************" << endl << endl;
 }
@@ -108,10 +113,14 @@ string normalCompression(string text){
 
 	// adds compressed characters to compressed
 	for(unsigned int i = 0; i < len; i++){
-		int c = word[i] - 'a' + 1;
-		if(word[i] == ' ') c = 27; 
+		int c;
+		if(ENCODINGCHARS == 1) c = charToInt(word[i]);
+		else {
+			c = word[i] - 'a' + 1;
+			if(word[i] == ' ') c = 27;
+			else if(word[i] == '.') c = 28; 
+		}
 		string t = convertToBinary(c);
-		if(REPORT) cout << "c : " << c << " -> " << t << endl;
 		compressed += t;
 	}
 	if(REPORT) cout << "NORMAL : "<< compressed << endl;
@@ -153,10 +162,12 @@ CompressedWords * tryLocalDict(string text, int normalLen, mtf * localDictionary
 }
 
 
-// tries all possible of revealed - chars combinations (with the global dictionary) for text
+// tries all possible revealed - chars combinations (with the global dictionary) for text
 // and returns the best combination, with its winning ratio
 // normalLen is the length of the compressed string for text using standard scheme
-CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixTrie) {
+// lastLetter is the last letter of the prev word is text is not the start of a phrase, or else
+// it is '!'
+CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixTrie, char lastLetter) {
 	// the result
         CompressedWords * bestWord = new CompressedWords;
 
@@ -169,7 +180,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 	const char * words = text.c_str();
 
 	// for every possible number of revealed chars (ranging from 1 to len)
-        for(int q = 1; q <= len; q++){
+        for(int q = 1; q <= len/2 + 1; q++){
 		if(REPORT) cout << "   FINDING LETTERS ; len: " << len << ", q: " << q << endl;
 		// finds all combinations of choosing q items from len items, and stores it in
 		// combinationLetters
@@ -199,8 +210,44 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
                         for(int j = ind; j < len; j++){
                         	currentRevealedQueue.push(j);
 			}
+			
 			// the index given by searching for text in the suffix tree using currentRevealed
                         int globalRes = GlobalSuffixTrie->get_rank(text, currentRevealedQueue);
+
+			string extraAtStart = "";
+	
+			// was last letter used?
+			bool usedPrevLetter = false;
+			// if lastLetter is not '!', text is in the suffix trie and last letter can be used
+			if(USELASTLETTER == 1 && lastLetter != '!' && globalRes != -1) {
+				// the text with the last letter added to the front
+                                ostringstream tmp;
+                                tmp << lastLetter << " " << text;
+                                string newText = tmp.str();
+
+				// searches suffix trie for newText
+				int globalRes2 = GlobalSuffixTrie->get_rank(newText, currentRevealedQueue,true);
+
+				// if globalRes2 is better than globalRes
+				if(globalRes2 != -1 && globalRes2 < globalRes){
+					// determines whether # bits for globalRes2 is small than for globalRes
+					string t1 = convertToBinary(globalRes);
+					string t2 = convertToBinary(globalRes2);
+        	                        int lastInt;
+	                                if(ENCODINGCHARS == 1) lastInt = charToInt(lastLetter);
+                	                else {
+                        	                if(lastLetter == ' ') lastInt = 27;
+                                	        else lastInt = lastLetter - 'a' + 1;
+                                	}
+					string t3 = convertToBinary(lastInt);
+					if(t2.length() + 2 + t3.length() < t1.length()){
+						// globalRes2 has less bits, so is the winning config
+						usedPrevLetter = true;
+						extraAtStart = "10" + t3;
+						globalRes = globalRes2;
+					}
+				}
+			}
 
 			// if text is not found in global dictionary, done (return bestWord, with ratio -1)
 			if(globalRes == -1) {
@@ -211,8 +258,9 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 
 			// the string storing the compressed result for this combination
 			// first stores the # of reveals
-                        string globalCompressed = convertToBinary(q); 
-			if(REPORT) cout << " # reveals : " << globalCompressed << " (" << q << ")"<< endl;
+			string rev = convertToBinary(q);
+                        string globalCompressed = extraAtStart + rev; 
+			if(REPORT) cout << " # reveals : " << rev << " (" << q << ")"<< endl;
 
 			// previous position guessed
                         int prev = 0;
@@ -220,11 +268,14 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
                         // stores <position difference (relative to prev),char> in compressed string
 			// for each revealed char
                         for(vector<int>::iterator IT = currentRevealed.begin(); IT != currentRevealed.end(); IT++){
-				// current revealed char, stored as a number between 1 - 27
+				// current revealed char is encoded
                         	char revealChar = words[(*IT)];
-                                int revealInt;
-                                if(revealChar == ' ') revealInt = 27; 
-                                else revealInt = revealChar - 'a' + 1;
+				int revealInt;
+				if(ENCODINGCHARS == 1) revealInt = charToInt(revealChar);
+				else {
+	                                if(revealChar == ' ') revealInt = 27; 
+        	                        else revealInt = revealChar - 'a' + 1;
+				}
 
 				string t1 = convertToBinary((*IT) - prev + 1);
 				string t2 = convertToBinary(revealInt);
@@ -262,6 +313,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
                                 bestWord->usesLocalDict = false;
                                 bestWord->revealedChars = currentRevealed;
 				bestWord->numLetters = currentRevealed.size();
+				bestWord->usedLast = usedPrevLetter;
                         } // if
                 } // for
 
@@ -271,6 +323,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 	// prints best combination
 	if(SUMMARY) {
 		cout << "***" << endl << "BEST REVEAL FOR \"" << text << "\": " << bestWord->compressedString << " (ratio " << bestWord->ratio << "); guess : ";
+		if(bestWord->usedLast) cout << "Used last letter" << endl;
 		for(int i = 0; i < len; i++){
 			if(bestWord->revealedChars.size() != 0 && bestWord->revealedChars[0] == i){
 				cout << words[i];
@@ -357,8 +410,15 @@ pair <string,string> removeSpaces(string text){
 	// if the last non-space char was a period or start of text
 	bool period = true;
 
+	bool newLine = false;
+
         // reads text char-by-char
         while(in.get(c)){
+		if(c == '\n' && !newLine){
+			newLine = true;
+			continue;
+		} else if(c != '\n' && newLine) newLine = false;
+
                 if(c != ' ' && ! space) {
 
 			if(period) {
@@ -431,10 +491,17 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 	text = p.first;
 	string bits = p.second;
 
+	// encodes bit vector with RLE
+	istringstream bitV(bits.c_str());
+	bits = rleEncode(bitV);
+
 	// removes extra spaces from text
 	p = removeSpaces(text);
         text = p.first;
         string bitVector = p.second + bits;
+
+	// normal encoding for the entire text
+	string normalEncod = normalCompression(text) + bitVector;
 
 	int n = text.length();
 	const char * T = text.c_str();
@@ -530,8 +597,30 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 		// the compressed word using local dictionary
 		CompressedWords * bestWord = tryLocalDict(thisWord,normalLen, localDictionary);
 
-		// the best revealed-chars combination, gotten from the global dictionary
-		CompressedWords * bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie);
+
+                // the best revealed-chars combination, gotten from the global dictionary
+                CompressedWords * bestGlobal;
+
+                if(bestWord->ratio == -1) {
+                        // determines the best global configuration for thisWord and stores it in the local dictionary
+			bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie,'!');
+			CompressedWords * bestGl = new CompressedWords(*bestGlobal);
+			localDictionary->CPinsert(thisWord,bestGl);
+			if(SUMMARY) cout << "Inserted in local dict: CP of \"" << thisWord << "\"" << endl;
+                } else {
+                	CompressedWords * bestGl = localDictionary->findBest(thisWord);
+                        if(bestGl == NULL) {
+				// determines the best global configuration for thisWord and stores it in the local dictionary
+				bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie,'!');
+				CompressedWords * bestGl = new CompressedWords(*bestGlobal);
+	                        localDictionary->CPinsert(thisWord,bestGl);
+        	                if(SUMMARY) cout << "Inserted in local dict: CP of \"" << thisWord << "\"" << endl;
+                        } else {
+                        	bestGlobal = new CompressedWords(*bestGl); 
+                                if(SUMMARY) cout << "USED LOCAL SHORTCUT for \"" << thisWord << "\"" << endl;
+                        } // else
+                } // else
+
 
 		// stores the better of bestGlobal and bestWord in bestWord, deletes the other
 		if(bestGlobal->ratio != -1 && bestGlobal->ratio < 100 && (bestGlobal->ratio < bestWord->ratio || bestWord->ratio == -1)){
@@ -602,6 +691,8 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 					(current->splits)[l] = splits[l];
 				}
 
+				char lastLetter = '!';
+
 				// tries to compress each set of words
 				for(int k = 0; k <= numSplits; k++){
 					// length of current group of words
@@ -636,7 +727,30 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 			                CompressedWords * bestWord = tryLocalDict(thisWord,normalLen, localDictionary);
 
 			                // the best revealed-chars combination, gotten from the global dictionary
-			                CompressedWords * bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie);
+			                CompressedWords * bestGlobal;
+
+
+			                if(bestWord->ratio == -1) {
+                        			// determines the best global configuration for thisWord and stores it in the local dictionary
+			                        bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie,lastLetter);
+                        			CompressedWords * bestGl = new CompressedWords(*bestGlobal);
+			                        localDictionary->CPinsert(thisWord,bestGl);
+                        			if(SUMMARY) cout << "Inserted in local dict: CP of \"" << thisWord << "\"" << endl;
+			                } else {
+                        			CompressedWords * bestGl = localDictionary->findBest(thisWord);
+			                        if(bestGl == NULL) {
+                        			        // determines the best global configuration for thisWord and stores it in the local dictionary
+			                                bestGlobal = tryAllLetters(thisWord,normalLen, GlobalSuffixTrie,lastLetter);
+                        			        CompressedWords * bestGl = new CompressedWords(*bestGlobal);
+			                                localDictionary->CPinsert(thisWord,bestGl);
+                        			        if(SUMMARY) cout << "Inserted in local dict: CP of \"" << thisWord << "\"" << endl;
+			                        } else {
+                        		        	bestGlobal = new CompressedWords(*bestGl);
+		                        	        if(SUMMARY) cout << "USED LOCAL SHORTCUT for \"" << thisWord << "\"" << endl;
+                			        } // else
+			                } // else
+
+					lastLetter = words[len-1];
 
 			                // stores the better of bestGlobal and bestWord in bestWord, deletes the other
 			                if(bestGlobal->ratio != -1 && bestGlobal->ratio < 100 && (bestGlobal->ratio < bestWord->ratio || bestWord->ratio == -1)){
@@ -700,15 +814,18 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 			// words encoded
 			string tmp = (*ITERAT)->words;
 
+			if(USELASTLETTER == 1 && (*ITERAT)->usedLast) numLastLetterUsed++;
+
 			// updates encoding schemes
 			string scheme = (*ITERAT)->encodingScheme;
 			if(scheme == "NORMAL") schemes[0]++;
 			else if(scheme == "LOCAL") schemes[1]++;
 			else schemes[2]++;
 
+			CompressedWords * TMP = new CompressedWords(*(*ITERAT));
 			// updates local dictionary
-			localDictionary->insert(tmp);
-			if(REPORT || SUMMARY) cout << "local: inserting \"" << tmp << "\" (" << scheme << " used)" << endl;
+			localDictionary->insert(tmp,TMP);
+			if(REPORT || SUMMARY) cout << "local: inserting \"" << tmp << "\" (" << scheme << " used) with compressed word" << endl;
 
 			// updates words in word group
 			istringstream tempIn (tmp.c_str());
@@ -718,7 +835,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 				l++;
 				if(tmp != tm){
 					if(REPORT || SUMMARY) cout << "local: inserting \"" << tm << "\"" << endl;
-					localDictionary->insert(tm);
+					localDictionary->insert(tm,NULL);
 				}
 			}
 			numWordsInGroup[l]++;
@@ -750,13 +867,18 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 
 	} // while
 
-	// prints statistics
-	if(STATS) printStats();
-
 	delete localDictionary;
 
+	// prints statistics
+	if(STATS) printStats();
 	// adds dot indicator, and "10" (indicates end of phrases) + bitVector
-	return dot + finalRes + "10" + bitVector;
+	string endResult = dot + finalRes + "10" + bitVector;
+
+	// outputs final ratio
+//	if(SUMMARY || STATS || END) cout << "FINAL Ratio : " << 100.0 * endResult.length() / (normalEncod.length()) << endl;
+        if(SUMMARY || STATS || END) cout << "FINAL Ratio : " << 100.0 * endResult.length() / (1 + bitVector.length()+ 14 * text.length()) << endl;
+
+	return endResult;
 }
 
 
