@@ -1,6 +1,6 @@
 #!/bin/bash
 X=0
-for f in *.bz2
+for f in corpus*
 do
 	echo "starting file $X"
 	./a<corpus$X > preProsCorpus$X 
