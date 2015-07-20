@@ -13,7 +13,13 @@ bool COMMENTS = false;
 trie * readCorpus(){
 	trie * Global = new trie;
 
-	ifstream in ("corpus");
+string name = "preProsCorpus";
+for (int k = 0; k  <= 55; k++){
+	ostringstream thisName;
+	thisName << name << k;
+	string file = thisName.str();
+
+	ifstream in (file);
 
 	string s;
 
@@ -45,5 +51,6 @@ trie * readCorpus(){
 		} // for
 	} // while
 
+}
 	return Global;
 }
