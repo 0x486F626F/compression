@@ -2,7 +2,10 @@
 
 #include <stack>
 #include <iostream>
-word_counter::word_counter(const unsigned int &freq, const std::string &word): freq(freq), word(word) {}
+#include <fstream>
+#include <sstream>
+
+word_counter::word_counter(const unsigned long long &freq, const std::string &word): freq(freq), word(word) {}
 
 bool word_counter::operator < (const word_counter &other) const {
 	if (freq == other.freq) return word < other.word;
@@ -36,6 +39,50 @@ void trie::_insert(trie_node* &current, std::string s) {
 void trie::insert(const std::string &s) {
 	_insert(root, std::string(s.rbegin(), s.rend()));
 }
+
+/*
+unsigned long long numStar;
+int number;
+void trie::_load(std::istream & in, trie_node* &current) {
+	std::string line = "";
+	while(line == "" && !in.eof()) std::getline(in, line);
+        std::istringstream currFreq(line.c_str());
+        if(in.eof()) return;
+
+std::cout << "at " << line << std::endl;
+	if(numStar != 0) {
+		numStar--;
+		return;
+	} else if(currFreq.peek() == '*') {
+		std::string s;
+		currFreq >> s >> numStar;
+		numStar--;
+		return;
+	}
+
+	unsigned long long freq;
+	currFreq >> freq;
+
+	if(!current){
+		current = new trie_node();
+		current->count = freq;
+	}
+
+	for(int k = 0; k < 27; k++){
+		_load(in,current->child[k]);
+number++;
+	}
+	
+}
+
+void trie::load() {
+	std::ifstream in ("SuffixTrie");
+	numStar = 0; number = 0;
+	_load(in,root);
+std::cout << "number " << number << std::endl;
+}
+*/
+
 
 bool trie::approx_match(std::string s, const unsigned int max_mismatch) {
 	s = std::string(s.rbegin(), s.rend());
@@ -99,10 +146,10 @@ std::set <word_counter> trie::_match_words(std::string s, std::queue <unsigned i
 	return matched_words;
 }
 
-int trie::get_rank(std::string s, std::queue <unsigned int> dontcare, bool usedLast) {
+long long trie::get_rank(std::string s, std::queue <unsigned int> dontcare, bool usedLast) {
 	s = std::string(s.rbegin(), s.rend());
 	std::set <word_counter> matched_words = _match_words(s, dontcare,usedLast);
-	int rank = 0;
+	long long rank = 0;
 	while (matched_words.size()) {
 		if (matched_words.begin()->word == std::string(s.rbegin(), s.rend())) return rank;
 		else rank ++, matched_words.erase(matched_words.begin());
@@ -110,11 +157,57 @@ int trie::get_rank(std::string s, std::queue <unsigned int> dontcare, bool usedL
 	return -1;
 }
 
-std::string trie::get_word(std::string s, std::queue <unsigned int> dontcare, unsigned int rank, bool usedLast) {
+std::string trie::get_word(std::string s, std::queue <unsigned int> dontcare, unsigned long long rank, bool usedLast) {
 	s = std::string(s.rbegin(), s.rend());
 	std::set <word_counter> matched_words = _match_words(s, dontcare, usedLast);
 
-	for (std::set <word_counter>::iterator i = matched_words.begin(); i != matched_words.end(); i ++, rank --)
-		if (rank == 0) return i->word;
+	for (std::set <word_counter>::iterator i = matched_words.begin(); i != matched_words.end(); i ++, rank --) {
+		if (rank == 0) {
+			std::string currWord = i->word;
+			std::string res;
+			if(usedLast) res = currWord.substr(2);
+			else res = currWord;
+			return res;
+		}
+	}
 	return "NOT_FOUND";
 }
+
+
+/*
+bool LastStar;
+int numStars;
+
+
+int kl;
+void trie::_traverse(std::ostream & out, trie_node* &current){
+        if (!current) {
+kl++;        	//out << "*" << std::endl;
+if(kl == 1000000) {kl = 0; std::cout << "at *" << std::endl;}		
+		if(!LastStar){
+                        LastStar = true;
+                        numStars = 1;
+                } else numStars++;
+
+		return;
+	} else if(LastStar) {
+        	out << "* " << numStars << std::endl;
+                numStars = 0;
+                LastStar = false;
+	}
+        out << current->count << std::endl;
+        for(int k = 0; k < 27; k++) {
+		_traverse(out, current->child[k]);
+        }
+}
+
+void trie::traverse_trie(){
+
+kl=0;	std::ofstream out ("SuffixTrie");
+
+	LastStar = false;
+	numStars = 0;
+
+	_traverse(out,root);
+}
+*/

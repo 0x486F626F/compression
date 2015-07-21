@@ -54,6 +54,28 @@ string convertToBinary(int n, bool addOne) {
         return r;
 }
 
+// same as above, for long long
+string convertToBinaryLong(long long n, bool addOne) {
+        // the result
+        string r = "";
+        while(n!=0) {
+                string add;
+                if(n % 2 == 0) add = "0";
+                else add = "1";
+                r = add + r;
+                n /= 2;
+        }
+        // the length of n converted to binary
+        int len = r.length();
+
+        // appends 1 (if addOne is true) and log n - 1 zeros to the start of r
+        if(addOne) r = "1" + r;
+        for(int i = 1; i < len; i++) { r = "0" + r;}
+
+        return r;
+}
+
+
 // encodes entire binary string from in using RLE
 string rleEncode(istringstream & in){
 	// initial bit

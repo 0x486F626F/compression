@@ -13,7 +13,10 @@ int ENCODINGCHARS = 0;
 
 int main (){
 
+
 	trie * GlobalSuffixTrie = readCorpus();
+//cout << "READ" << endl;
+//	GlobalSuffixTrie->traverse_trie();
 	bool quit = false;
 	string command = "";
 

@@ -12,8 +12,8 @@ class mtf {
 	public:
 		void insert(const std::string &word, CompressedWords * cp);
                 void CPinsert(const std::string &word, CompressedWords * cp);
-		unsigned int index(const std::string &word);
-		std::string word(const unsigned int index);
+		unsigned long long index(const std::string &word);
+		std::string word(const unsigned long long index);
 		CompressedWords* findBest(const std::string &word);
 		~mtf();
 };

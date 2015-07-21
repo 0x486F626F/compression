@@ -46,7 +46,7 @@ void mtf::insert(const std::string &word,CompressedWords * cp) {
 	dict.insert(dict.begin(), p);
 }
 
-unsigned int mtf::index(const std::string &word) {
+unsigned long long mtf::index(const std::string &word) {
         std::vector< std::pair <std::string, CompressedWords*> >::iterator it;
 	for(it = dict.begin(); it != dict.end(); it++){
 		if(it->first == word) break;
@@ -56,7 +56,7 @@ unsigned int mtf::index(const std::string &word) {
 	return it - dict.begin();
 }
 
-std::string mtf::word(const unsigned int index) {
+std::string mtf::word(const unsigned long long index) {
 	if (index < dict.size()) return dict[index].first;
 	return "OUT_OF_RANGE";
 }

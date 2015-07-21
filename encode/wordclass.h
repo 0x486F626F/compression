@@ -42,6 +42,8 @@ class CompressedPhrase {
 
 std::string convertToBinary(int n,bool addOne = true);
 
+std::string convertToBinaryLong(long long n,bool addOne = true);
+
 std::string rleEncode(std::istringstream & in);
 
 std::string rleDecode(std::istringstream &in);

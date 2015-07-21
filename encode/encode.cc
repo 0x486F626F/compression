@@ -11,7 +11,7 @@ using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
 bool REPORT = false;  // very detailed
-bool SUMMARY = true; // some details
+bool SUMMARY = false; // some details
 bool END = true;     // few details
 bool STATS = true;    // statistics about optimum wordgroup/guess combinations
 
@@ -138,7 +138,7 @@ CompressedWords * tryLocalDict(string text, int normalLen, mtf * localDictionary
         bestWord->words = text;
 
         // determines index using local Dictionary
-        unsigned int localRes = localDictionary->index(text);
+        unsigned long long localRes = localDictionary->index(text);
 
         string localCompressed = "";
         float localRatio = -1.0;
@@ -147,7 +147,7 @@ CompressedWords * tryLocalDict(string text, int normalLen, mtf * localDictionary
 	// if text is found in local dictionary, determine localCompressed
         if(localRes != 0xffffffff){
 		// "1" indicates local dict is used
-        	localCompressed = "1" + convertToBinary(localRes + 1);
+        	localCompressed = "1" + convertToBinaryLong(localRes + 1);
                 int localLen = localCompressed.length();
                 localRatio = 100.0 * localLen / normalLen; 
                 if(REPORT) cout << "LOCAL (FOR \"" << text << "\"): localRes = " << localRes << " , localCompressed = " << localCompressed
@@ -180,7 +180,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 	const char * words = text.c_str();
 
 	// for every possible number of revealed chars (ranging from 1 to len)
-        for(int q = 1; q <= len/2 + 1; q++){
+        for(int q = 1; q <= len - 1 /*len/2 + 1*/; q++){
 		if(REPORT) cout << "   FINDING LETTERS ; len: " << len << ", q: " << q << endl;
 		// finds all combinations of choosing q items from len items, and stores it in
 		// combinationLetters
@@ -212,7 +212,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 			}
 			
 			// the index given by searching for text in the suffix tree using currentRevealed
-                        int globalRes = GlobalSuffixTrie->get_rank(text, currentRevealedQueue);
+                        long long globalRes = GlobalSuffixTrie->get_rank(text, currentRevealedQueue);
 
 			string extraAtStart = "";
 	
@@ -226,7 +226,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
                                 string newText = tmp.str();
 
 				// searches suffix trie for newText
-				int globalRes2 = GlobalSuffixTrie->get_rank(newText, currentRevealedQueue,true);
+				long long globalRes2 = GlobalSuffixTrie->get_rank(newText, currentRevealedQueue,true);
 
 				// if globalRes2 is better than globalRes
 				if(globalRes2 != -1 && globalRes2 < globalRes){
@@ -290,7 +290,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 			// to the start of the string to indicate the global dicitionary is used
 
 			string t1 = convertToBinary(len - prev + 1);
-			string t2 = convertToBinary(globalRes+1);
+			string t2 = convertToBinaryLong(globalRes+1);
 
 			if(REPORT) cout << "  end: " << t1 << " (" << len - prev + 1 << ") + index " << t2 << " (" << globalRes << " + 1)" << endl;
                         globalCompressed = "0" + globalCompressed + t1 + t2; 

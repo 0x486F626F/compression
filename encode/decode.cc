@@ -43,6 +43,41 @@ int convertToInt(istringstream & in){
         return total;
 }
 
+
+// same as above, for long long
+// converts first number from in to an int
+unsigned long long convertToIntLong(istringstream & in){
+        // length of number in binary, obtained by reading all 0s at the start
+        int i = 1;
+        char c;
+        while(in >> c && c == '0') i++;
+        // the number in binary
+        stringstream num;
+        while(i > 0){
+                in >> c;
+                num << c;
+                i--;
+        }
+
+        // the desired number in binary
+        unsigned long long binary;
+        num >> binary;
+        // converts binary to int
+
+        unsigned long long factor = 1;
+        // the result
+        unsigned long long total = 0;
+
+        while (binary != 0) {
+                total += (binary % 10) * factor;
+                binary /= 10;
+                factor *= 2;
+        }
+
+        return total;
+}
+
+
 // decodes the first word from in, given that it
 // was encoded using the global dictionary
 string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
@@ -134,7 +169,7 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 	// adds last position difference to index, to get the length of the word
 	index += t1;
 
-	int globalIndex = convertToInt(in)-1;
+	unsigned long long globalIndex = convertToIntLong(in)-1;
 
 	string guessedWord = start + guessed.str();
 
@@ -146,7 +181,7 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 // decodes the first word from in, given that it
 // was encoded using the local dictionary
 string decodeLocal (istringstream & in, mtf * localDictionary) {
-        int index = convertToInt(in) - 1;
+        unsigned long long index = convertToIntLong(in) - 1;
 	if(COMMENT) cout << "searching local at index " << index << endl;
 	return localDictionary->word(index);
 }
