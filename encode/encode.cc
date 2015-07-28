@@ -478,7 +478,8 @@ pair <string,string> removeSpaces(string text){
 
 // returns the binary string for the best compression of text
 string bestCompression (string text, trie * GlobalSuffixTrie){
-
+	// length of initial text
+	int TotalLength = text.length();
 	initializeStats();
 
 	mtf * localDictionary = new mtf;
@@ -875,8 +876,7 @@ string bestCompression (string text, trie * GlobalSuffixTrie){
 	string endResult = dot + finalRes + "10" + bitVector;
 
 	// outputs final ratio
-//	if(SUMMARY || STATS || END) cout << "FINAL Ratio : " << 100.0 * endResult.length() / (normalEncod.length()) << endl;
-        if(SUMMARY || STATS || END) cout << "FINAL Ratio : " << 100.0 * endResult.length() / (1 + bitVector.length()+ 14 * text.length()) << endl;
+        if(SUMMARY || STATS || END) cout << "FINAL Ratio : " << 100.0 * endResult.length() / (14 * TotalLength) << endl;
 
 	return endResult;
 }
