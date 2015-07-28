@@ -12,12 +12,14 @@ bool COMMENT = false;
 
 
 // converts first number from in to an int
-int convertToInt(istringstream & in){
+int convertToInt(istringstream & in, bool addOne = true){
 	// length of number in binary, obtained by reading all 0s at the start
 	int i = 1;
 	char c;
 	while(in >> c && c == '0') i++;
 	// the number in binary
+
+	if(!addOne) in.putback(c);
 	stringstream num;
 	while(i > 0){
 		in >> c;
@@ -46,11 +48,13 @@ int convertToInt(istringstream & in){
 
 // same as above, for long long
 // converts first number from in to an int
-unsigned long long convertToIntLong(istringstream & in){
+unsigned long long convertToIntLong(istringstream & in, bool addOne = true){
         // length of number in binary, obtained by reading all 0s at the start
         int i = 1;
         char c;
         while(in >> c && c == '0') i++;
+ 
+        if(!addOne) in.putback(c);
         // the number in binary
         stringstream num;
         while(i > 0){
@@ -99,7 +103,7 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 			usedLast = true;
 
 			// decodes the last letter
-			int t = convertToInt(in);
+			int t = convertToInt(in,false);
 	                if(ENCODINGCHARS == 1) c = intToChar(t);
         	        else {
                 	        if(t == 27) c = ' ';
@@ -132,9 +136,9 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 	while(numReveals > 0) {
 
 		// position difference from current value of index
-		int t1 = convertToInt(in);
+		int t1 = convertToInt(in, false);
 		// the revealed char, as an int
-		int t2 = convertToInt(in);
+		int t2 = convertToInt(in,false);
 
 		for(int j = index + 1; j < index + t1; j++){
 			revealedQueue.push(j);
@@ -159,7 +163,7 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 	} 
 
 	// position difference to the end of the word
-	int t1 = convertToInt(in);
+	int t1 = convertToInt(in,false);
 
         for(int j = index + 1; j < index + t1; j++){
                 revealedQueue.push(j);
@@ -169,7 +173,7 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 	// adds last position difference to index, to get the length of the word
 	index += t1;
 
-	unsigned long long globalIndex = convertToIntLong(in)-1;
+	unsigned long long globalIndex = convertToIntLong(in,false)-1;
 
 	string guessedWord = start + guessed.str();
 
@@ -191,7 +195,7 @@ string decodeLocal (istringstream & in, mtf * localDictionary) {
 // was compressed with the standard scheme
 string decodeNormal(istringstream & in) {
 	// the length of the word
-	int len = convertToInt(in);
+	int len = convertToInt(in,false);
 
 	if(COMMENT) cout << "LEN : " << len << endl;
 
@@ -200,7 +204,7 @@ string decodeNormal(istringstream & in) {
 
 	// decodes char-by-char
 	while(len > 0){
-		int t = convertToInt(in);
+		int t = convertToInt(in,false);
 		char c;
 		if(ENCODINGCHARS == 1)  c = intToChar(t);
 		else {
@@ -307,7 +311,7 @@ string addSpaces(string simplified, istringstream & in){
         ostringstream res;
 
 	// reads the # spaces at start from in
-        n = convertToInt(in) - 1;
+        n = convertToInt(in,false) - 1;
         // adds this number of spaces
         while(n > 0){
                 res << ' ';
@@ -324,7 +328,7 @@ string addSpaces(string simplified, istringstream & in){
 			res << c;
 			period = false;
 		} else {  // reads the next number (# spaces before a perido if c == '.') from in
-			n = convertToInt(in) - 1;
+			n = convertToInt(in,false) - 1;
 			// adds this number of spaces
 			while(n > 0){
 				res << ' ';
@@ -336,7 +340,7 @@ string addSpaces(string simplified, istringstream & in){
 				period = true;
 				res << c;
 				// reads the next number from in
-	                        n = convertToInt(in) - 1;
+	                        n = convertToInt(in,false) - 1;
         	                // adds this number of spaces
                 	        while(n > 0){
                         	        res << ' ';
@@ -348,7 +352,7 @@ string addSpaces(string simplified, istringstream & in){
 
 	if(!period){
 		// adds spaces at end
-		n = convertToInt(in) - 1;
+		n = convertToInt(in,false) - 1;
 	        while(n > 0){
 		        res << ' ';
                 	n--;

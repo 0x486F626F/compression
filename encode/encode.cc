@@ -109,7 +109,7 @@ string normalCompression(string text){
 	unsigned int len = text.length();
 
         // compressed string
-        string compressed = "110" + convertToBinary(len);
+        string compressed = "110" + convertToBinary(len,false);
 
 	// adds compressed characters to compressed
 	for(unsigned int i = 0; i < len; i++){
@@ -120,7 +120,7 @@ string normalCompression(string text){
 			if(word[i] == ' ') c = 27;
 			else if(word[i] == '.') c = 28; 
 		}
-		string t = convertToBinary(c);
+		string t = convertToBinary(c,false);
 		compressed += t;
 	}
 	if(REPORT) cout << "NORMAL : "<< compressed << endl;
@@ -239,7 +239,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
                         	                if(lastLetter == ' ') lastInt = 27;
                                 	        else lastInt = lastLetter - 'a' + 1;
                                 	}
-					string t3 = convertToBinary(lastInt);
+					string t3 = convertToBinary(lastInt,false);
 					if(t2.length() + 2 + t3.length() < t1.length()){
 						// globalRes2 has less bits, so is the winning config
 						usedPrevLetter = true;
@@ -277,8 +277,8 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
         	                        else revealInt = revealChar - 'a' + 1;
 				}
 
-				string t1 = convertToBinary((*IT) - prev + 1);
-				string t2 = convertToBinary(revealInt);
+				string t1 = convertToBinary((*IT) - prev + 1, false);
+				string t2 = convertToBinary(revealInt, false);
 
 				if(REPORT) cout << "  adding " << t1 << " (" << (*IT) - prev + 1 << ") + " << t2 << " (" << revealInt << ")" << endl;
 				// adds position difference and char to string
@@ -289,8 +289,8 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 			// adds the difference to the end of phrase and globalRes to the end of the string, and "0" 
 			// to the start of the string to indicate the global dicitionary is used
 
-			string t1 = convertToBinary(len - prev + 1);
-			string t2 = convertToBinaryLong(globalRes+1);
+			string t1 = convertToBinary(len - prev + 1, false);
+			string t2 = convertToBinaryLong(globalRes+1,false);
 
 			if(REPORT) cout << "  end: " << t1 << " (" << len - prev + 1 << ") + index " << t2 << " (" << globalRes << " + 1)" << endl;
                         globalCompressed = "0" + globalCompressed + t1 + t2; 
@@ -423,7 +423,7 @@ pair <string,string> removeSpaces(string text){
 
 			if(period) {
 	                        // stores # of spaces
-        	                bits += convertToBinary(numSpaces + 1);
+        	                bits += convertToBinary(numSpaces + 1,false);
                 	        numSpaces = 0;
 			}
 
@@ -431,7 +431,7 @@ pair <string,string> removeSpaces(string text){
 			out << c;
 			// if c is a period, stores the number of spaces before it, 0
 			if(c == '.') {
-				bits += convertToBinary(1);
+				bits += convertToBinary(1,false);
 				period = true;
 			} else period = false;
 		} else if(c != ' ' && space) {
@@ -446,7 +446,7 @@ pair <string,string> removeSpaces(string text){
 			else period = true;
 
 			// stores # of spaces
-			bits += convertToBinary(numSpaces + 1);
+			bits += convertToBinary(numSpaces + 1,false);
 			numSpaces = 0;
 		} else { 
 			// if c is a space, increments # spaces
@@ -457,13 +457,13 @@ pair <string,string> removeSpaces(string text){
 
 	// stores # of spaces at the end
 	if(space) {
-		bits += convertToBinary(numSpaces + 1);
-	} else bits += convertToBinary(1);
+		bits += convertToBinary(numSpaces + 1,false);
+	} else bits += convertToBinary(1,false);
 
         string simplified = out.str();
 
 	// if text is only spaces, stores "spaces at end" (i.e. 0)
-	if(simplified == "") bits+= convertToBinary(1);
+	if(simplified == "") bits+= convertToBinary(1,false);
 
         if(REPORT) cout << "SIMPLIFIED SPACES: \"" << text << "\" to \"" << simplified << "\" with bits " << bits << endl;
 
