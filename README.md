@@ -8,36 +8,36 @@ First bit:
 
 A set of phrases; each phrase is encoded as follows:
 
-* the number of words groups in this phrase
+* the number of words groups in this phrase (with an extra 1 after the initial 0s)
 each word group is encoded as follows:
 * an indicator of the type of encoding used; “0” indicates  Global Dictionary Encoding,  “1” indicates Local Dictionary Encoding or Standard Encoding; if the next two bits after the “1” are “10” then it is the Standard Encoding (and these two bits are garbage), otherwise it is the Local Dictionary Encoding (and this two bits are part of the actual encoding)
 * the corresponding encoding for this word group (see below):
 
 ## Global Dictionary Encoding
-*if uses previous letter, this starts with “10” and this letter in its encoded form
-* number of revealed characters
-* list of \<position difference, char\> representing revealed characters (position difference is the difference between the index of the current revealed char and the previous one)
+*if uses previous letter, this starts with “10” and this letter in its encoded form (without an extra 1 after the initial 0s) 
+* number of revealed characters (with an extra 1 after the initial 0s)
+* list of \<position difference, char\> representing revealed characters (position difference is the difference between the index of the current revealed char and the previous one); both are encoded without an extra 1 after the initial 0s
 
-* the position difference to the end of the word 
-* the rank in the suffix trie search + 1
+* the position difference to the end of the word (without an extra 1 after the initial 0s)
+* the rank in the suffix trie search + 1 (without an extra 1 after the initial 0s)
 
 ## Local Dictionary Encoding
 
-* the rank in the local dictionary search + 1
+* the rank in the local dictionary search + 1 (with an extra 1 after the initial 0s)
 
 ## Standard Encoding
 
-* the length of the word
-		-the set of individual characters
+* the length of the word (without an extra 1 after the initial 0s)
+* the set of individual characters (without an extra 1 after the initial 0s)
 
 “10” to indicate that the set of phrases is done
 
 A set of the number of spaces: reading the decoded string so far left-to-right, char-by-char 
 
-* the number of spaces at the beginning of the text + 1 is stored
-* for each space encountered, the number of spaces at that point + 1 is stored in the binary string
-* for each period encountered, the number of spaces immediately before it + 1 and after it + 1 are stored 
-* the number of spaces at the end of the text + 1 is stored
+* the number of spaces at the beginning of the text + 1 is stored (without an extra 1 after the initial 0s)
+* for each space encountered, the number of spaces at that point + 1 is stored in the binary string (without an extra 1 after the initial 0s)
+* for each period encountered, the number of spaces immediately before it + 1 and after it + 1 are stored (without an extra 1 after the initial 0s)
+* the number of spaces at the end of the text + 1 is stored (without an extra 1 after the initial 0s)
 
 (note: for all of these, once the number of spaces is stored, all multiple spaces are deleted)
 
