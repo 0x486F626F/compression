@@ -6,11 +6,11 @@ each word group is encoded as follows:
 	- an indicator of the type of encoding used; “0” indicates  Global Dictionary Encoding,  “1” indicates Local Dictionary Encoding or Standard Encoding; if the next two bits after the “1” are “10” then it is the Standard Encoding (and these two bits are garbage), otherwise it is the Local Dictionary Encoding (and this two bits are part of the actual encoding)
 		- the corresponding encoding for this word group (see below):
 1) Global Dictionary Encoding
--if uses previous letter, this starts with “10” and this letter in its encoded form (without an extra 1 after the initial 0s)
 		- # of revealed characters (with an extra 1 after the initial 0s)
 	-list of <position difference, char> representing revealed characters (position difference is the difference between the index of the current revealed char and the previous one); both are encoded without an extra 1 after the initial 0s
 - the position difference to the end of the word (without an extra 1 after the initial 0s)
 - the rank in the suffix trie search + 1 (without an extra 1 after the initial 0s)
+Note: this rank is got by searching for this word with the last letter of the previous word (if there is a previous word in this phrase); if this is the start of the phrase, the rank is got by searching for this word alone
 2) Local Dictionary Encoding
 - the rank in the local dictionary search + 1 is stored in the binary string (with an extra 1 after the initial 0s)
 3) Standard Encoding
