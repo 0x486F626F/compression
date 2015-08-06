@@ -8,7 +8,7 @@
 using namespace std;
 
 // LEVEL OF OUTPUT COMMENTS:
-bool COMMENT = false;
+bool COMMENT = true;
 
 
 // converts first number from in to an int
@@ -84,39 +84,14 @@ unsigned long long convertToIntLong(istringstream & in, bool addOne = true){
 
 // decodes the first word from in, given that it
 // was encoded using the global dictionary
-string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
-	// did this encoding use the last letter of the prev word?
-	bool usedLast = false;
-
-	// encoding to be added before guesses (if !usedLast) this is ""
-	// otherwise it is lastLetter + " "
+string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie, char lastLetter) {
+	// encoding to be added before guesses, i.e. lastLetter + " "
         string start = "";
-
-	// determines if usedLast is true or false based on first 2 bits
-	// (if they are "10" then true, else false)
-	char c = in.peek();
-	if(c == '1'){
-		in >> c;
-		c = in.peek();
-		if(c == '0'){
-			in >> c;
-			usedLast = true;
-
-			// decodes the last letter
-			int t = convertToInt(in,false);
-	                if(ENCODINGCHARS == 1) c = intToChar(t);
-        	        else {
-                	        if(t == 27) c = ' ';
-                        	else c = t + 'a' - 1;
-                	} // eles
-			ostringstream o;
-			o << c << " ";
-			start = o.str();
-			if(COMMENT) cout << "first letter " << c << endl;
-		} else {
-			in.putback(c);
-		} // else
-	} // if
+	if(lastLetter != '!'){
+		ostringstream newStart;
+		newStart << lastLetter << " ";
+		start = newStart.str();
+	}
 
 	// the number of revealed chars
 	int numReveals = convertToInt(in);
@@ -154,7 +129,6 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 			if(t2 == 27) c = ' '; 
 			else c = t2 + 'a' - 1;
 		}
-
 		guessed << c;
 
 		if(COMMENT) cout << "char : " << c << ", pos diff : " << t1 << " , current index : " << index << endl;
@@ -177,7 +151,9 @@ string decodeGlobal (istringstream & in, trie * GlobalSuffixTrie) {
 
 	string guessedWord = start + guessed.str();
 
-	if(COMMENT) cout << "len : " << index << " , rank : " << globalIndex << " , guessed: " << guessedWord << endl; 
+	bool usedLast = (lastLetter != '!');
+
+	if(COMMENT) cout << "len : " << index << " , rank : " << globalIndex << " , guessed: " << guessedWord << " , lastLetter: " << lastLetter << endl; 
 	return GlobalSuffixTrie->get_word(guessedWord, revealedQueue, globalIndex,usedLast);
 }
 
@@ -233,6 +209,8 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie, mtf * localDict
 	// word groups (to be inserted in the local dict)
 	queue<string> words;
 
+	char lastLetter = '!';
+
 	// decodes word group by word group
 	while(numGroups > 0){
 		// reads in the first bit
@@ -243,7 +221,7 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie, mtf * localDict
 
 		// if the first bit is 0, this word group is encoded
 		// with the global dictionary scheme
-		if(c == '0') result = decodeGlobal(in, GlobalSuffixTrie);
+		if(c == '0') result = decodeGlobal(in, GlobalSuffixTrie,lastLetter);
 		else {  // if the first bit is 1
 			c = in.peek();
 
@@ -267,7 +245,7 @@ string decodePhrase(istringstream & in, trie * GlobalSuffixTrie, mtf * localDict
 				} // if
 			} // if
 		} // if
-
+                lastLetter = result[result.length()-1];
 		// adds result to word groups
 		words.push(result);
 

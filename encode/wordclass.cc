@@ -12,13 +12,14 @@ CompressedWords::CompressedWords() {
 	usedLast = false;
         ratio = -1.0;
 	numLetters = 0;
+	prevLetter = '!';
 }
 
 // copy constructor
 CompressedWords::CompressedWords(const CompressedWords& cp):
 	words(cp.words),revealedChars(cp.revealedChars),numLetters(cp.numLetters),
 	compressedString(cp.compressedString),ratio(cp.ratio),usedLast(cp.usedLast),
-	usesLocalDict(cp.usesLocalDict),encodingScheme(cp.encodingScheme) {}
+	usesLocalDict(cp.usesLocalDict),encodingScheme(cp.encodingScheme), prevLetter(cp.prevLetter) {}
 
 // CompressedPhrase desctructor
 CompressedPhrase::~CompressedPhrase(){

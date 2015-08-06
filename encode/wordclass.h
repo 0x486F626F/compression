@@ -4,9 +4,6 @@
 #include <string>
 #include <sstream>
 
-// 0 = false (use normal words)
-// 1 = true (use better of the two)
-extern int USELASTLETTER;
 
 
 // 0 = use normal encoding scheme (a = 1, b = 2, ... z = 26, ' ' = 27)
@@ -24,6 +21,7 @@ class CompressedWords{
 	bool usedLast;
         bool usesLocalDict;
 	std::string encodingScheme;
+	char prevLetter;
         CompressedWords();
 	CompressedWords(const CompressedWords& cp);
 };
