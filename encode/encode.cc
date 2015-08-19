@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -16,7 +17,9 @@ bool END = true;     // few details
 bool STATS = true;    // statistics about optimum wordgroup/guess combinations
 
 
-
+// bounds for revealed chars
+int MAX_NUM_REVEALED_CHARS = 4;
+int MAX_NUM_WORDS = 5;
 
 // For Statistics:
 int MAX_SIZE = 1000;
@@ -170,30 +173,35 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 
         bestWord->words = text;
 
-int Spaces = 0;
-int t = text.length();
-                for(int q = 0; q < t; q++){
-if(text[q] == ' ') Spaces++;
-                }
-if(Spaces + 1 > 5) { // MAX NUMBER OF WORDS CONSIDERED
-	bestWord->ratio = -1; cout << "Too many words" << endl;
-	return bestWord;
-}	
+	int Spaces = 0;
+	int t = text.length();
+        for(int q = 0; q < t; q++){
+		if(text[q] == ' ') Spaces++;
+        }
+
+	if(Spaces + 1 > MAX_NUM_WORDS) { // MAX NUMBER OF WORDS CONSIDERED
+		bestWord->ratio = -1; cout << "Too many words" << endl;
+		return bestWord;
+	}	
 
 	// length of text
 	int len = text.length();	
 
+	bool exitEarly = false;
+
 	// text as an array
 	const char * words = text.c_str();
-int Bound = (len <= 4) ? len - 1 : 4; // MAX NUMBER OF REVEALED CHARS CONSIDERED
+	int Bound = (len <=  MAX_NUM_REVEALED_CHARS) ? len - 1 :  MAX_NUM_REVEALED_CHARS; // MAX NUMBER OF REVEALED CHARS CONSIDERED
 	// for every possible number of revealed chars (ranging from 1 to len)
-        for(int q = 1; q <= Bound; q++){
+        for(int q = 1; !exitEarly && q <= Bound; q++){
 		if(REPORT) cout << "   FINDING LETTERS ; len: " << len << ", q: " << q << endl;
 		// finds all combinations of choosing q items from len items, and stores it in
 		// combinationLetters
                 findAllCombinations(len, q, false);
-		// for each combination
-                for(vector< vector<int> >::iterator itera = combinationLetters.begin(); itera != combinationLetters.end(); itera++){
+
+                // for each combination
+		#pragma omp parallel for
+		for(unsigned int ITERAT = 0; ITERAT < combinationLetters.size(); ITERAT++){
 			if(REPORT) cout << "     Letters: " << endl << "     ";
 
                         // positions of revealed chars in ascending order
@@ -204,7 +212,7 @@ int Bound = (len <= 4) ? len - 1 : 4; // MAX NUMBER OF REVEALED CHARS CONSIDERED
 			// current combination in currentRevealed
 			// and indices of non-revealed chars in currentRevealedQueue
 			int ind = 0;
-                        for(vector <int>::iterator iterat = (*itera).begin(); iterat != (*itera).end(); iterat++){
+                        for(vector <int>::iterator iterat = (combinationLetters[ITERAT]).begin(); iterat != (combinationLetters[ITERAT]).end(); iterat++){
 				for(int j = ind; j < (*iterat)-1; j++){
 					currentRevealedQueue.push(j);
 				}
@@ -219,7 +227,6 @@ int Bound = (len <= 4) ? len - 1 : 4; // MAX NUMBER OF REVEALED CHARS CONSIDERED
 			}
 			
 			// the index given by searching for text in the suffix tree using currentRevealed
-                    //    long long globalRes = GlobalSuffixTrie->get_rank(text, currentRevealedQueue);
 
 			long long globalRes;
 
@@ -232,78 +239,82 @@ int Bound = (len <= 4) ? len - 1 : 4; // MAX NUMBER OF REVEALED CHARS CONSIDERED
 				globalRes = GlobalSuffixTrie->get_rank(newText, currentRevealedQueue,true);
 			} else globalRes = GlobalSuffixTrie->get_rank(text, currentRevealedQueue);
 
+
 			// if text is not found in global dictionary, done (return bestWord, with ratio -1)
 			if(globalRes == -1) {
 				if(REPORT) cout << text << " NOT FOUND in global dictionary => DONE " << endl;
 				combinationLetters.clear();
-				return bestWord;
+				//return bestWord;
+				exitEarly = true;
 			} 
 
-			// the string storing the compressed result for this combination
-			// first stores the # of reveals
-			string rev = convertToBinary(q);
-                        string globalCompressed = rev;
-			if(REPORT) cout << " # reveals : " << rev << " (" << q << ")"<< endl;
+			if(!exitEarly){
+				// the string storing the compressed result for this combination
+				// first stores the # of reveals
+				string rev = convertToBinary(q);
+                        	string globalCompressed = rev;
+				if(REPORT) cout << " # reveals : " << rev << " (" << q << ")"<< endl;
 
-			// previous position guessed
-                        int prev = 0;
+				// previous position guessed
+                	        int prev = 0;
 
-                        // stores <position difference (relative to prev),char> in compressed string
-			// for each revealed char
-                        for(vector<int>::iterator IT = currentRevealed.begin(); IT != currentRevealed.end(); IT++){
-				// current revealed char is encoded
-                        	char revealChar = words[(*IT)];
-				int revealInt;
-				if(ENCODINGCHARS == 1) revealInt = charToInt(revealChar);
-				else {
-	                                if(revealChar == ' ') revealInt = 27; 
-        	                        else revealInt = revealChar - 'a' + 1;
-				}
+	                        // stores <position difference (relative to prev),char> in compressed string
+				// for each revealed char
+                	        for(vector<int>::iterator IT = currentRevealed.begin(); IT != currentRevealed.end(); IT++){
+					// current revealed char is encoded
+                        		char revealChar = words[(*IT)];
+					int revealInt;
+					if(ENCODINGCHARS == 1) revealInt = charToInt(revealChar);
+					else {
+	                	                if(revealChar == ' ') revealInt = 27; 
+        	                	        else revealInt = revealChar - 'a' + 1;
+					}
 
-				string t1 = convertToBinary((*IT) - prev + 1, false);
-				string t2 = convertToBinary(revealInt, false);
+					string t1 = convertToBinary((*IT) - prev + 1, false);
+					string t2 = convertToBinary(revealInt, false);
 
-				if(REPORT) cout << "  adding " << t1 << " (" << (*IT) - prev + 1 << ") + " << t2 << " (" << revealInt << ")" << endl;
-				// adds position difference and char to string
-                                globalCompressed = globalCompressed + t1 + t2;
-                                prev = (*IT) + 1;
-                        } // for
+					if(REPORT) cout << "  adding " << t1 << " (" << (*IT) - prev + 1 << ") + " << t2 << " (" << revealInt << ")" << endl;
+					// adds position difference and char to string
+                                	globalCompressed = globalCompressed + t1 + t2;
+	                                prev = (*IT) + 1;
+        	                } // for
 
-			// adds the difference to the end of phrase and globalRes to the end of the string, and "0" 
-			// to the start of the string to indicate the global dicitionary is used
+				// adds the difference to the end of phrase and globalRes to the end of the string, and "0" 
+				// to the start of the string to indicate the global dicitionary is used
 
-			string t1 = convertToBinary(len - prev + 1, false);
-			string t2 = convertToBinaryLong(globalRes+1,false);
+				string t1 = convertToBinary(len - prev + 1, false);
+				string t2 = convertToBinaryLong(globalRes+1,false);
 
-			if(REPORT) cout << "  end: " << t1 << " (" << len - prev + 1 << ") + index " << t2 << " (" << globalRes << " + 1)" << endl;
-                        globalCompressed = "0" + globalCompressed + t1 + t2; 
+				if(REPORT) cout << "  end: " << t1 << " (" << len - prev + 1 << ") + index " << t2 << " (" << globalRes << " + 1)" << endl;
+                        	globalCompressed = "0" + globalCompressed + t1 + t2; 
 
-			// length of the compressed string
-                        int globalLen = globalCompressed.length();
-			// ratio
-                        float globalRatio = 100.0 * globalLen / normalLen;
+				// length of the compressed string
+        	                int globalLen = globalCompressed.length();
+				// ratio
+                        	float globalRatio = 100.0 * globalLen / normalLen;
 
-			if(REPORT) cout << "GLOBAL: globalRes = " << globalRes << " , globalCompressed = " << globalCompressed << endl << "  normalLen = " << normalLen 
-					<< " , globalLen = " << globalLen << " , globalRatio = " << fixed << setw(7) << setprecision(3) << globalRatio << endl;
+				if(REPORT) cout << "GLOBAL: globalRes = " << globalRes << " , globalCompressed = " << globalCompressed << endl << "  normalLen = " << normalLen 
+						<< " , globalLen = " << globalLen << " , globalRatio = " << fixed << setw(7) << setprecision(3) << globalRatio << endl;
 
-			// if the ratio for this combination is better than the best ratio so far, or 
-			// this is the first combination of revealed chars tried, stores this combination
-			// in bestWord
-                        if(bestWord->ratio > globalRatio || bestWord->ratio == -1) {
-                        	if(REPORT) cout << "OLD RATIO: " << bestWord->ratio << " worse than new ratio: "<< globalRatio << endl;
-                                bestWord->compressedString = globalCompressed;
-                                bestWord->ratio = globalRatio;
-                                bestWord->usesLocalDict = false;
-                                bestWord->revealedChars = currentRevealed;
-				bestWord->numLetters = currentRevealed.size();
-                        } // if
+				// if the ratio for this combination is better than the best ratio so far, or 
+				// this is the first combination of revealed chars tried, stores this combination
+				// in bestWord
+        	                if(bestWord->ratio > globalRatio || bestWord->ratio == -1) {
+                	        	if(REPORT) cout << "OLD RATIO: " << bestWord->ratio << " worse than new ratio: "<< globalRatio << endl;
+                        	        bestWord->compressedString = globalCompressed;
+                                	bestWord->ratio = globalRatio;
+	                                bestWord->usesLocalDict = false;
+        	                        bestWord->revealedChars = currentRevealed;
+					bestWord->numLetters = currentRevealed.size();
+                        	} // if
+			} // if
                 } // for
 
                 combinationLetters.clear();
 	} // for
 
 	// prints best combination
-	if(SUMMARY) {
+	if(SUMMARY && !exitEarly) {
 		cout << "***" << endl << "BEST REVEAL FOR \"" << text << "\": " << bestWord->compressedString << " (ratio " << bestWord->ratio << "); guess : ";
 		for(int i = 0; i < len; i++){
 			if(bestWord->revealedChars.size() != 0 && bestWord->revealedChars[0] == i){
@@ -313,7 +324,7 @@ int Bound = (len <= 4) ? len - 1 : 4; // MAX NUMBER OF REVEALED CHARS CONSIDERED
 		} 
 		cout << endl << "***" << endl;
 	}
-	bestWord->prevLetter = lastLetter;
+	if(!exitEarly) bestWord->prevLetter = lastLetter;
 	return bestWord;
 }
 

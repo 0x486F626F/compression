@@ -11,9 +11,41 @@ using namespace std;
 int USELASTLETTER = 0;
 int ENCODINGCHARS = 0;
 
+// converts first number from in to an int
+int convertInt(istringstream & in, bool addOne = true){
+        // length of number in binary, obtained by reading all 0s at the start
+        int i = 1;
+        char c;
+        while(in >> c && c == '0') i++;
+        // the number in binary
+        stringstream num;
+        if(!addOne) in.putback(c);
+
+        while(i > 0 && in >> c){
+                num << c;
+                i--;
+        }
+
+        // the desired number in binary
+        int binary;
+        num >> binary;
+        // converts binary to int
+
+        int factor = 1;
+        // the result
+        int total = 0;
+
+        while (binary != 0) {
+                total += (binary % 10) * factor;
+                binary /= 10;
+                factor *= 2;
+        }
+
+        return total;
+}
+
+
 int main (){
-
-
 	trie * GlobalSuffixTrie = readCorpus();
 //cout << "READ" << endl;
 //	GlobalSuffixTrie->traverse_trie();
@@ -29,15 +61,6 @@ int main (){
 
 		if(command == "encode") {
 			string inputType = "";
-
-                        while(inputType != "y" && inputType != "n"){
-                                cout << "Do you want to use last letter (y/n)?";
-                                cin >> inputType;
-                        }
-			if(inputType == "y") USELASTLETTER = 1;
-			else USELASTLETTER = 0;
-
-			inputType = "";
 
                         while(inputType != "f" && inputType != "n"){
                                 cout << "Do you want to use normal encoding scheme for chars, or use the frequencies of letters (n/f)?";
