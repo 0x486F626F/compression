@@ -14,13 +14,13 @@ each word group is encoded as follows:
 * the corresponding encoding for this word group (see below):
 
 ## Global Dictionary Encoding
-*if uses previous letter, this starts with “10” and this letter in its encoded form (without an extra 1 after the initial 0s) 
+
 * number of revealed characters (with an extra 1 after the initial 0s)
 * list of \<position difference, char\> representing revealed characters (position difference is the difference between the index of the current revealed char and the previous one); both are encoded without an extra 1 after the initial 0s
 
 * the position difference to the end of the word (without an extra 1 after the initial 0s)
 * the rank in the suffix trie search + 1 (without an extra 1 after the initial 0s)
-
+* Note: this rank is got by searching for this word with the last letter of the previous word (if there is a previous word in this phrase); if this is the start of the phrase, the rank is got by searching for this word alone
 ## Local Dictionary Encoding
 
 * the rank in the local dictionary search + 1 (with an extra 1 after the initial 0s)
