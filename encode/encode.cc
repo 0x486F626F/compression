@@ -243,7 +243,7 @@ CompressedWords * tryAllLetters(string text, int normalLen, trie * GlobalSuffixT
 			// if text is not found in global dictionary, done (return bestWord, with ratio -1)
 			if(globalRes == -1) {
 				if(REPORT) cout << text << " NOT FOUND in global dictionary => DONE " << endl;
-				combinationLetters.clear();
+				//combinationLetters.clear();
 				//return bestWord;
 				exitEarly = true;
 			} 
