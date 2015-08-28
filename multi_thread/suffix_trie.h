@@ -6,6 +6,8 @@
 #include <set>
 #include <iostream>
 
+extern long long trie_size;
+
 struct word_counter {
 	unsigned long long freq;
 	std::string word;
@@ -32,8 +34,8 @@ class trie {
 		~trie();
 		void insert(const std::string &s);
 		bool approx_match(std::string s, const unsigned int max_mismatch);
-		long long get_rank(std::string s, std::queue <unsigned int> revealed, bool usedLast = false);
-		std::string get_word(std::string s, const std::queue <unsigned int> revealed, unsigned long long rank, bool usedLast = false);
+		long long get_rank(std::string s, std::queue <unsigned int> dontcare, bool usedLast = false);
+		std::string get_word(std::string s, const std::queue <unsigned int> dontcare, unsigned long long rank, bool usedLast = false);
 		void traverse_trie();
 		void load();
 };

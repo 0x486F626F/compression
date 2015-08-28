@@ -47,6 +47,8 @@ int convertInt(istringstream & in, bool addOne = true){
 
 int main (){
 	trie * GlobalSuffixTrie = readCorpus();
+	std::cerr << trie_size * sizeof(trie_node) << std::endl;
+	return 0;
 	//cout << "READ" << endl;
 	//	GlobalSuffixTrie->traverse_trie();
 	bool quit = false;

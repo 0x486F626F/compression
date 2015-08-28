@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 
+long long trie_size = 0;
+
 word_counter::word_counter(const unsigned long long &freq, const std::string &word): freq(freq), word(word) {}
 
 bool word_counter::operator < (const word_counter &other) const {
@@ -28,7 +30,7 @@ trie::trie(): root(NULL) {}
 trie::~trie() { delete root; }
 
 void trie::_insert(trie_node* &current, std::string s) {
-	if (!current) current = new trie_node();
+	if (!current) current = new trie_node(), trie_size ++;
 	current->count ++;
 	if (s.size()) {
 		unsigned int idx = s[0] == ' ' ? 26 : s[0] - 'a';
@@ -39,50 +41,6 @@ void trie::_insert(trie_node* &current, std::string s) {
 void trie::insert(const std::string &s) {
 	_insert(root, std::string(s.rbegin(), s.rend()));
 }
-
-/*
-unsigned long long numStar;
-int number;
-void trie::_load(std::istream & in, trie_node* &current) {
-	std::string line = "";
-	while(line == "" && !in.eof()) std::getline(in, line);
-        std::istringstream currFreq(line.c_str());
-        if(in.eof()) return;
-
-std::cout << "at " << line << std::endl;
-	if(numStar != 0) {
-		numStar--;
-		return;
-	} else if(currFreq.peek() == '*') {
-		std::string s;
-		currFreq >> s >> numStar;
-		numStar--;
-		return;
-	}
-
-	unsigned long long freq;
-	currFreq >> freq;
-
-	if(!current){
-		current = new trie_node();
-		current->count = freq;
-	}
-
-	for(int k = 0; k < 27; k++){
-		_load(in,current->child[k]);
-number++;
-	}
-	
-}
-
-void trie::load() {
-	std::ifstream in ("SuffixTrie");
-	numStar = 0; number = 0;
-	_load(in,root);
-std::cout << "number " << number << std::endl;
-}
-*/
-
 
 bool trie::approx_match(std::string s, const unsigned int max_mismatch) {
 	s = std::string(s.rbegin(), s.rend());
@@ -173,6 +131,48 @@ std::string trie::get_word(std::string s, std::queue <unsigned int> dontcare, un
 	return "NOT_FOUND";
 }
 
+/*
+unsigned long long numStar;
+int number;
+void trie::_load(std::istream & in, trie_node* &current) {
+	std::string line = "";
+	while(line == "" && !in.eof()) std::getline(in, line);
+        std::istringstream currFreq(line.c_str());
+        if(in.eof()) return;
+
+std::cout << "at " << line << std::endl;
+	if(numStar != 0) {
+		numStar--;
+		return;
+	} else if(currFreq.peek() == '*') {
+		std::string s;
+		currFreq >> s >> numStar;
+		numStar--;
+		return;
+	}
+
+	unsigned long long freq;
+	currFreq >> freq;
+
+	if(!current){
+		current = new trie_node();
+		current->count = freq;
+	}
+
+	for(int k = 0; k < 27; k++){
+		_load(in,current->child[k]);
+number++;
+	}
+	
+}
+
+void trie::load() {
+	std::ifstream in ("SuffixTrie");
+	numStar = 0; number = 0;
+	_load(in,root);
+std::cout << "number " << number << std::endl;
+}
+*/
 
 /*
 bool LastStar;
